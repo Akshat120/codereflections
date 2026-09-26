@@ -1,14 +1,18 @@
 import { Router } from "express";
-import { db } from "../db/database.js";
+import { withTransaction } from "../db/database.js";
 import {
   findAll as findAllReflections,
-  reflectionDeleteStatements,
-  allReflectionDeleteStatements
+  deleteReflection,
+  deleteAllReflections,
+  updateReflectionTimeAndDate
 } from "../repositories/reflectionRepository.js";
 import {
   getAllQueue,
-  queueDeleteStatement
+  deleteQueueProblem,
+  deleteAllQueue,
+  updateQueueProblemTimeAndDate
 } from "../repositories/queueRepository.js";
+import { parseContestId, parseProblemIndex } from "../validation.js";
 
 export const manageRoutes = Router();
 
@@ -82,19 +86,19 @@ manageRoutes.get("/problems", async (_req, res) => {
 });
 
 manageRoutes.delete("/problems/:contestId/:index", async (req, res) => {
-  const contestId = Number(req.params.contestId);
-  const index = String(req.params.index).toUpperCase();
+  const contestId = parseContestId(req.params.contestId);
+  const index = parseProblemIndex(req.params.index);
 
-  if (!Number.isInteger(contestId) || !index) {
+  if (!contestId || !index) {
     return res.status(400).json({ error: "Invalid contestId or index." });
   }
 
   try {
     // Reflection, review data and queue entry go together or not at all
-    await db.batch([
-      ...reflectionDeleteStatements(contestId, index),
-      queueDeleteStatement(contestId, index)
-    ], "write");
+    await withTransaction(async session => {
+      await deleteReflection(contestId, index, { session });
+      await deleteQueueProblem(contestId, index, { session });
+    });
 
     return res.json({
       success: true,
@@ -109,7 +113,10 @@ manageRoutes.delete("/problems/:contestId/:index", async (req, res) => {
 
 manageRoutes.delete("/problems", async (_req, res) => {
   try {
-    await db.batch([...allReflectionDeleteStatements(), `DELETE FROM practice_queue`], "write");
+    await withTransaction(async session => {
+      await deleteAllReflections({ session });
+      await deleteAllQueue({ session });
+    });
 
     return res.json({
       success: true,
@@ -121,10 +128,10 @@ manageRoutes.delete("/problems", async (_req, res) => {
 });
 
 const updateProblemHandler = async (req, res) => {
-  const contestId = Number(req.params.contestId);
-  const index = String(req.params.index).toUpperCase();
+  const contestId = parseContestId(req.params.contestId);
+  const index = parseProblemIndex(req.params.index);
 
-  if (!Number.isInteger(contestId) || !index) {
+  if (!contestId || !index) {
     return res.status(400).json({ error: "Invalid contestId or index." });
   }
 
@@ -148,28 +155,12 @@ const updateProblemHandler = async (req, res) => {
   }
 
   try {
-    // null leaves a field unchanged (COALESCE keeps the current value)
-    await db.batch([
-      {
-        sql: `
-          UPDATE reflections
-          SET time_spent_seconds = COALESCE(?, time_spent_seconds),
-              created_at = COALESCE(?, created_at),
-              updated_at = COALESCE(?, updated_at)
-          WHERE contest_id = ? AND problem_index = ?
-        `,
-        args: [newTime, isoDate, isoDate, contestId, index]
-      },
-      {
-        sql: `
-          UPDATE practice_queue
-          SET time_spent_seconds = COALESCE(?, time_spent_seconds),
-              added_at = COALESCE(?, added_at)
-          WHERE contest_id = ? AND problem_index = ?
-        `,
-        args: [newTime, isoDate, contestId, index]
-      }
-    ], "write");
+    // null leaves a field unchanged
+    const changes = { timeSpentSeconds: newTime, date: isoDate };
+    await withTransaction(async session => {
+      await updateReflectionTimeAndDate(contestId, index, changes, { session });
+      await updateQueueProblemTimeAndDate(contestId, index, changes, { session });
+    });
 
     return res.json({
       success: true,
@@ -181,7 +172,7 @@ const updateProblemHandler = async (req, res) => {
       solvedAt: isoDate
     });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to update problem in database: " + err.message });
+    return res.status(500).json({ error: "Failed to update problem in database." });
   }
 };
 

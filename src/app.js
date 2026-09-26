@@ -18,6 +18,7 @@ const __dirname = path.dirname(__filename);
 // function (api/index.js). On Vercel, static files and page routes are served
 // by the CDN (see vercel.json); these static handlers matter only locally.
 const app = express();
+app.disable("x-powered-by");
 
 const publicDir = path.join(__dirname, "../public");
 // Files are resolved relative to public/ so a dot-folder anywhere in the
@@ -39,8 +40,39 @@ const clientRoutes = [
   "/tag-times"
 ];
 
+// Security headers on every response (vercel.json sets the same ones for the
+// static files the CDN serves)
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
+
+// Cross-site request forgery guard for the API: a write must come from this
+// site (Origin, when the browser sends one) and, when it has a body, be JSON.
+// Plain HTML forms on other sites can do neither.
+app.use("/api", (req, res, next) => {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
+  const origin = req.headers.origin;
+  if (origin) {
+    const host = req.headers["x-forwarded-host"] || req.headers.host;
+    let sameSite = false;
+    try {
+      sameSite = new URL(origin).host === host;
+    } catch (_) {}
+    if (!sameSite) return res.status(403).json({ error: "Cross-site request refused." });
+  }
+  const type = req.headers["content-type"];
+  if (type && !/^application\/json\s*(;|$)/i.test(type)) {
+    return res.status(415).json({ error: "Send JSON (Content-Type: application/json)." });
+  }
+  return next();
+});
+
 app.use(express.json({ limit: "100kb" }));
-app.use(express.urlencoded({ extended: false }));
 
 app.get("/journal", (_req, res) => {
   res.redirect(301, "/progress");
@@ -71,9 +103,16 @@ app.get("/health", (_req, res) => {
 });
 
 // Login / session endpoints are open; everything else under /api needs a
-// session (when APP_PASSWORD is set) and a ready database.
+// session (when APP_PASSWORD is set), and all but the static stuck-reasons list
+// need a ready database.
 app.use("/api", authRoutes);
 app.use("/api", requireAuth);
+
+// Static data: answered without waiting for the database
+app.get("/api/stuck-reasons", (_req, res) => {
+  res.json(STUCK_REASON_GROUPS);
+});
+
 app.use("/api", async (_req, res, next) => {
   try {
     await dbReady();
@@ -88,10 +127,6 @@ app.use("/api/reflections", reflectionRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/manage", manageRoutes);
 app.use("/api/reviews", reviewRoutes);
-
-app.get("/api/stuck-reasons", (_req, res) => {
-  res.json(STUCK_REASON_GROUPS);
-});
 
 app.use("/api", (_req, res) => {
   res.status(404).json({

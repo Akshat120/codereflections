@@ -1,126 +1,128 @@
-import { db } from "../db/database.js";
+import { collections, nextIds, withTransaction } from "../db/database.js";
 
-function mapRow(row) {
-  if (!row) return null;
-  let tags = [];
-  try {
-    tags = JSON.parse(row.tags_json || "[]");
-  } catch (_) {}
+const { queue } = collections;
 
+function mapDoc(doc) {
+  if (!doc) return null;
   return {
-    id: row.id,
-    contestId: row.contest_id,
-    index: row.problem_index,
-    name: row.problem_name,
-    rating: row.rating,
-    tags,
-    url: row.problem_url,
-    timeSpentSeconds: row.time_spent_seconds,
-    timerRunning: Boolean(row.timer_running),
-    status: row.status,
-    addedAt: row.added_at
+    id: doc.id,
+    contestId: doc.contestId,
+    index: doc.index,
+    name: doc.name,
+    rating: doc.rating ?? null,
+    tags: Array.isArray(doc.tags) ? doc.tags : [],
+    url: doc.url,
+    timeSpentSeconds: doc.timeSpentSeconds ?? 0,
+    timerRunning: Boolean(doc.timerRunning),
+    status: doc.status,
+    addedAt: doc.addedAt
   };
 }
 
-export async function getAllQueue() {
-  const result = await db.execute(`SELECT * FROM practice_queue ORDER BY id ASC`);
-  return result.rows.map(mapRow);
+function problemKey(contestId, index) {
+  return { contestId: Number(contestId), index: String(index).toUpperCase() };
+}
+
+export async function getAllQueue(options = {}) {
+  const docs = await queue.find({}, { sort: { id: 1 }, ...options }).toArray();
+  return docs.map(mapDoc);
 }
 
 export async function findQueueProblem(contestId, index) {
-  const result = await db.execute({
-    sql: `SELECT * FROM practice_queue WHERE contest_id = ? AND problem_index = ?`,
-    args: [Number(contestId), String(index).toUpperCase()]
-  });
-  return mapRow(result.rows[0]);
+  return mapDoc(await queue.findOne(problemKey(contestId, index)));
 }
 
-// Statement (for a batch) that inserts or updates one queued problem
-export function queueUpsertStatement(problem) {
-  return {
-    sql: `
-      INSERT INTO practice_queue (
-        contest_id, problem_index, problem_name, rating,
-        tags_json, problem_url, time_spent_seconds, timer_running, status, added_at
-      ) VALUES (
-        :contestId, :index, :name, :rating,
-        :tagsJson, :url, :timeSpentSeconds, :timerRunning, :status, :addedAt
-      )
-      ON CONFLICT(contest_id, problem_index) DO UPDATE SET
-        problem_name = excluded.problem_name,
-        rating = excluded.rating,
-        tags_json = excluded.tags_json,
-        problem_url = excluded.problem_url,
-        time_spent_seconds = excluded.time_spent_seconds,
-        timer_running = excluded.timer_running,
-        status = excluded.status
-    `,
-    args: {
-      contestId: Number(problem.contestId),
-      index: String(problem.index).toUpperCase(),
-      name: String(problem.name).trim(),
-      rating: problem.rating == null ? null : Number(problem.rating),
-      tagsJson: JSON.stringify(problem.tags || []),
-      url: String(problem.url).trim(),
-      timeSpentSeconds: Number(problem.timeSpentSeconds) || 0,
-      timerRunning: problem.timerRunning ? 1 : 0,
-      status: problem.status || "queued",
-      addedAt: problem.addedAt || new Date().toISOString()
-    }
-  };
-}
-
-// Adds or updates several problems together (all or none)
+// Adds or updates several problems together (all or none). A problem already
+// in the queue keeps its id (its place in the queue) and addedAt.
 export async function upsertQueueProblems(problems) {
-  await db.batch(problems.map(queueUpsertStatement), "write");
+  await withTransaction(async session => {
+    const firstId = await nextIds("practice_queue", problems.length, { session });
+    await queue.bulkWrite(
+      problems.map((problem, i) => ({
+        updateOne: {
+          filter: problemKey(problem.contestId, problem.index),
+          update: {
+            $set: {
+              name: String(problem.name).trim(),
+              rating: problem.rating == null ? null : Number(problem.rating),
+              tags: Array.isArray(problem.tags) ? problem.tags.map(String) : [],
+              url: String(problem.url).trim(),
+              timeSpentSeconds: Number(problem.timeSpentSeconds) || 0,
+              timerRunning: Boolean(problem.timerRunning),
+              status: problem.status || "queued"
+            },
+            $setOnInsert: {
+              id: firstId + i,
+              addedAt: problem.addedAt || new Date().toISOString()
+            }
+          },
+          upsert: true
+        }
+      })),
+      { session }
+    );
+  });
   return getAllQueue();
 }
 
+// Marks one problem active and every other one queued, in a single update
 export async function setActiveQueueProblem(contestId, index) {
-  await db.execute({
-    sql: `
-      UPDATE practice_queue
-      SET status = CASE
-        WHEN contest_id = ? AND problem_index = ? THEN 'active'
-        ELSE 'queued'
-      END
-    `,
-    args: [Number(contestId), String(index).toUpperCase()]
-  });
+  const key = problemKey(contestId, index);
+  await queue.updateMany({}, [
+    {
+      $set: {
+        status: {
+          $cond: [
+            {
+              $and: [
+                { $eq: ["$contestId", { $literal: key.contestId }] },
+                { $eq: ["$index", { $literal: key.index }] }
+              ]
+            },
+            "active",
+            "queued"
+          ]
+        }
+      }
+    }
+  ]);
   return getAllQueue();
 }
 
 export async function updateQueueProblemTime(contestId, index, timeSpentSeconds, timerRunning) {
-  await db.execute({
-    sql: `
-      UPDATE practice_queue
-      SET time_spent_seconds = ?, timer_running = ?
-      WHERE contest_id = ? AND problem_index = ?
-    `,
-    args: [
-      Number(timeSpentSeconds) || 0,
-      timerRunning ? 1 : 0,
-      Number(contestId),
-      String(index).toUpperCase()
-    ]
+  await queue.updateOne(problemKey(contestId, index), {
+    $set: {
+      timeSpentSeconds: Number(timeSpentSeconds) || 0,
+      timerRunning: Boolean(timerRunning)
+    }
   });
   return getAllQueue();
 }
 
-// Statement (for a batch) that removes one problem from the queue
-export function queueDeleteStatement(contestId, index) {
-  return {
-    sql: `DELETE FROM practice_queue WHERE contest_id = ? AND problem_index = ?`,
-    args: [Number(contestId), String(index).toUpperCase()]
-  };
+// Sets the time spent and/or the date added; a null value leaves it unchanged
+export async function updateQueueProblemTimeAndDate(contestId, index, { timeSpentSeconds, date }, options = {}) {
+  const set = {};
+  if (timeSpentSeconds != null) set.timeSpentSeconds = timeSpentSeconds;
+  if (date != null) set.addedAt = date;
+  if (Object.keys(set).length) {
+    await queue.updateOne(problemKey(contestId, index), { $set: set }, options);
+  }
+}
+
+export async function deleteQueueProblem(contestId, index, options = {}) {
+  await queue.deleteOne(problemKey(contestId, index), options);
 }
 
 export async function removeQueueProblem(contestId, index) {
-  await db.execute(queueDeleteStatement(contestId, index));
+  await deleteQueueProblem(contestId, index);
   return getAllQueue();
 }
 
+export async function deleteAllQueue(options = {}) {
+  await queue.deleteMany({}, options);
+}
+
 export async function clearQueueAll() {
-  await db.execute(`DELETE FROM practice_queue`);
+  await deleteAllQueue();
   return [];
 }

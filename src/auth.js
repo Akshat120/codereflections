@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { Router } from "express";
+import { blockedMinutes, clearFailures, clientIp, recordFailure } from "./loginLimiter.js";
 
 // Single-user password login. Set APP_PASSWORD to enable it (always required on
 // Vercel). A successful login sets a signed, HttpOnly session cookie.
@@ -90,13 +91,23 @@ authRoutes.post("/login", async (req, res) => {
     return res.json({ ok: true });
   }
 
+  const ip = clientIp(req);
+  const wait = await blockedMinutes(ip);
+  if (wait) {
+    res.setHeader("Retry-After", String(wait * 60));
+    return res.status(429).json({ error: `Too many wrong passwords. Try again in ${wait} minute${wait === 1 ? "" : "s"}.` });
+  }
+
   // Compare fixed-length hashes so timing doesn't reveal the password length
   const given = crypto.createHash("sha256").update(String(req.body?.password || "")).digest("hex");
   const expected = crypto.createHash("sha256").update(password()).digest("hex");
   if (!safeEqual(given, expected)) {
+    await recordFailure(ip);
     await new Promise(resolve => setTimeout(resolve, 600)); // slow down guessing
     return res.status(401).json({ error: "Wrong password." });
   }
+
+  await clearFailures(ip);
 
   setSessionCookie(req, res, createToken(), SESSION_DAYS * 24 * 60 * 60);
   return res.json({ ok: true });

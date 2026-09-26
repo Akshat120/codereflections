@@ -71,41 +71,12 @@ a:hover {
   text-decoration: none;
 }
 
-/* Three bars, measured from the reference logo (22px bars, 8px gaps,
-   heights 45/64/38) and scaled so the tallest bar is 32px */
-.brand-bars {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 32px;
-  position: relative;
-  top: -6px; /* bars stand on the wordmark's baseline */
-}
-
-.bar {
+/* The mark: "</>" above a waterline with its fading reflection (logo.svg) */
+.brand-logo {
   display: block;
-  width: 11px;
-  border-radius: 3px;
-  /* slightly darker edges and base, as in the reference */
-  box-shadow:
-    inset 1px 0 0 rgba(0, 0, 0, 0.05),
-    inset -1px 0 0 rgba(0, 0, 0, 0.05),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-}
-
-.bar-a {
-  height: 22px;
-  background: linear-gradient(#f8d887, #f1d06b 50%, #edca58);
-}
-
-.bar-b {
-  height: 32px;
-  background: linear-gradient(#4894ce, #438ec8 50%, #397dbc);
-}
-
-.bar-c {
-  height: 19px;
-  background: linear-gradient(#ae342f, #a5312c 50%, #a12e2b);
+  width: 40px;
+  height: 40px;
+  flex: none;
 }
 
 .brand-titles {
@@ -162,6 +133,10 @@ a:hover {
   }
   .brand-sub {
     font-size: 11px;
+  }
+  .brand-logo {
+    width: 32px;
+    height: 32px;
   }
 }
 
@@ -319,6 +294,42 @@ a:hover {
 .content-column,
 .sidebar {
   min-width: 0;
+}
+
+/* Site footer, on every page */
+.site-footer {
+  max-width: 1180px;
+  margin: 8px auto 0;
+  padding: 14px 12px 22px;
+  border-top: 1px solid #e1e1e1;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #777;
+}
+
+.site-footer-inner {
+  color: #444;
+}
+
+/* Inline, so the logo stays with the first words when the line wraps */
+.site-footer-logo {
+  display: inline-block;
+  vertical-align: middle;
+  margin: -3px 6px 0 0;
+}
+
+.site-footer-note {
+  margin-top: 4px;
+}
+
+[data-theme="dark"] .site-footer {
+  border-top-color: #383c40;
+  color: #8b949e;
+}
+
+[data-theme="dark"] .site-footer-inner {
+  color: #c4c9cd;
 }
 
 /* ==========================================================================
