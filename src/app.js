@@ -71,9 +71,16 @@ app.get("/health", (_req, res) => {
 });
 
 // Login / session endpoints are open; everything else under /api needs a
-// session (when APP_PASSWORD is set) and a ready database.
+// session (when APP_PASSWORD is set), and all but the static stuck-reasons list
+// need a ready database.
 app.use("/api", authRoutes);
 app.use("/api", requireAuth);
+
+// Static data: answered without waiting for the database
+app.get("/api/stuck-reasons", (_req, res) => {
+  res.json(STUCK_REASON_GROUPS);
+});
+
 app.use("/api", async (_req, res, next) => {
   try {
     await dbReady();
@@ -88,10 +95,6 @@ app.use("/api/reflections", reflectionRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/manage", manageRoutes);
 app.use("/api/reviews", reviewRoutes);
-
-app.get("/api/stuck-reasons", (_req, res) => {
-  res.json(STUCK_REASON_GROUPS);
-});
 
 app.use("/api", (_req, res) => {
   res.status(404).json({

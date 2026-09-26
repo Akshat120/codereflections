@@ -24,7 +24,9 @@ function databaseUri() {
 const globalCache = globalThis.__codeReflectionsMongo ??= {};
 
 export const client = globalCache.client ??= new MongoClient(databaseUri(), {
-  serverSelectionTimeoutMS: 10000,
+  // Fail fast when the server is unreachable (e.g. an Atlas cluster whose
+  // Network Access list doesn't allow Vercel): the UI waits on the first calls
+  serverSelectionTimeoutMS: 5000,
   appName: "codereflections"
 });
 

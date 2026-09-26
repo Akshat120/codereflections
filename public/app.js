@@ -226,6 +226,9 @@ async function syncQueueFromDb() {
     if (res.ok) {
       const items = await res.json();
       state.problems = items || [];
+    } else {
+      const { error } = await res.json().catch(() => ({}));
+      showMessage(error || `Could not load your practice queue (HTTP ${res.status}).`, true);
     }
   } catch (_) {}
 
@@ -3947,8 +3950,7 @@ async function initSession() {
 async function initApp() {
   initTheme();
   initSession();
-  await loadStuckReasons();
-  await syncQueueFromDb();
+  await Promise.all([loadStuckReasons(), syncQueueFromDb()]);
   renderProblemViews();
   updateTimer();
 
