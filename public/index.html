@@ -35,6 +35,28 @@
       } catch (_) {}
     })();
   </script>
+  <!-- Login gate: the page is a static file anyone can load, so keep it hidden
+       until /api/session says this visitor may see it; otherwise go straight
+       to the login page instead of flashing the app first. -->
+  <style>html.auth-pending body { visibility: hidden; }</style>
+  <script>
+    (function() {
+      var root = document.documentElement;
+      root.classList.add("auth-pending");
+      var reveal = function() { root.classList.remove("auth-pending"); };
+      setTimeout(reveal, 5000); // never stay blank if the check hangs
+      fetch("/api/session", { credentials: "same-origin", cache: "no-store" })
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .then(function(session) {
+          if (session && session.authEnabled && !session.loggedIn) {
+            location.replace("/login?next=" + encodeURIComponent(location.pathname + location.search));
+          } else {
+            reveal();
+          }
+        })
+        .catch(reveal);
+    })();
+  </script>
 </head>
 <body>
   <!-- Site Header -->

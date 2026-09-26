@@ -80,6 +80,7 @@ export function isLoggedIn(req) {
 export const authRoutes = Router();
 
 authRoutes.get("/session", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   res.json({ authEnabled: authEnabled(), loggedIn: isLoggedIn(req) });
 });
 
