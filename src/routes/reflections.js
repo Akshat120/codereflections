@@ -7,6 +7,7 @@ import {
 } from "../repositories/reflectionRepository.js";
 import { findQueueProblem, removeQueueProblem } from "../repositories/queueRepository.js";
 import { STUCK_REASON_KEYS } from "../stuckReasons.js";
+import { isHttpUrl, parseTags } from "../validation.js";
 
 export const reflectionRoutes = Router();
 
@@ -44,6 +45,23 @@ function validateBody(body) {
 
   if (!Number.isInteger(Number(body.timeSpentSeconds)) || Number(body.timeSpentSeconds) < 0) {
     return "timeSpentSeconds must be a non-negative integer.";
+  }
+
+  if (!isHttpUrl(body.problemUrl)) {
+    return "problemUrl must be an http(s) link.";
+  }
+
+  if (body.rating != null && body.rating !== "" &&
+      !(Number.isInteger(Number(body.rating)) && Number(body.rating) >= 0 && Number(body.rating) <= 5000)) {
+    return "rating must be an integer or empty.";
+  }
+
+  if (!parseTags(body.tags)) {
+    return "tags must be a list of short strings.";
+  }
+
+  if (answerFields.some(field => String(body[field]).length > 20000) || String(body.problemName).length > 200) {
+    return "An answer is too long.";
   }
 
   if (body.stuckReason != null && body.stuckReason !== "" && !STUCK_REASON_KEYS.has(body.stuckReason)) {
@@ -116,8 +134,8 @@ reflectionRoutes.post("/", async (req, res) => {
     contestId: Number(req.body.contestId),
     problemIndex: String(req.body.problemIndex).toUpperCase(),
     problemName: String(req.body.problemName).trim(),
-    rating: req.body.rating == null ? null : Number(req.body.rating),
-    tags: Array.isArray(req.body.tags) ? req.body.tags.map(String) : [],
+    rating: req.body.rating == null || req.body.rating === "" ? null : Number(req.body.rating),
+    tags: parseTags(req.body.tags),
     problemUrl: String(req.body.problemUrl).trim(),
     timeSpentSeconds: Number(req.body.timeSpentSeconds),
     keyObservation: String(req.body.keyObservation).trim(),

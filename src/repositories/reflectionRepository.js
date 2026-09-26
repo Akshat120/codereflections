@@ -1,143 +1,115 @@
-import { db } from "../db/database.js";
-import { reviewDeleteStatements, allReviewDeleteStatements } from "./reviewRepository.js";
+import { collections, nextIds } from "../db/database.js";
+import { deleteReviewData, deleteAllReviewData } from "./reviewRepository.js";
 
-const selectBase = `
-  SELECT
-    id,
-    contest_id AS contestId,
-    problem_index AS problemIndex,
-    problem_name AS problemName,
-    rating,
-    tags_json AS tagsJson,
-    problem_url AS problemUrl,
-    time_spent_seconds AS timeSpentSeconds,
-    key_observation AS keyObservation,
-    what_made_me_stuck AS whatMadeMeStuck,
-    stuck_reason AS stuckReason,
-    pattern,
-    future_trigger AS futureTrigger,
-    simplest_implementation AS simplestImplementation,
-    created_at AS createdAt,
-    updated_at AS updatedAt
-  FROM reflections
-`;
+const { reflections } = collections;
 
-function mapRow(row) {
-  if (!row) return null;
+// Fields returned by the API, in order
+const FIELDS = [
+  "id",
+  "contestId",
+  "problemIndex",
+  "problemName",
+  "rating",
+  "tags",
+  "problemUrl",
+  "timeSpentSeconds",
+  "keyObservation",
+  "whatMadeMeStuck",
+  "stuckReason",
+  "pattern",
+  "futureTrigger",
+  "simplestImplementation",
+  "createdAt",
+  "updatedAt"
+];
 
-  return {
-    ...row,
-    tags: JSON.parse(row.tagsJson)
-  };
+function mapDoc(doc) {
+  if (!doc) return null;
+  const reflection = {};
+  for (const field of FIELDS) reflection[field] = doc[field] ?? null;
+  reflection.tags = Array.isArray(doc.tags) ? doc.tags : [];
+  return reflection;
+}
+
+function problemKey(contestId, problemIndex) {
+  return { contestId: Number(contestId), problemIndex: String(problemIndex).toUpperCase() };
 }
 
 export async function findAll() {
-  const result = await db.execute(`${selectBase} ORDER BY updated_at DESC`);
-  return result.rows.map(mapRow);
+  const docs = await reflections.find({}, { sort: { updatedAt: -1 } }).toArray();
+  return docs.map(mapDoc);
 }
 
 export async function findByProblem(contestId, problemIndex) {
-  const result = await db.execute({
-    sql: `${selectBase} WHERE contest_id = ? AND problem_index = ?`,
-    args: [contestId, problemIndex]
-  });
-  return mapRow(result.rows[0]);
+  return mapDoc(await reflections.findOne(problemKey(contestId, problemIndex)));
 }
 
 export async function findById(id) {
-  const result = await db.execute({
-    sql: `${selectBase} WHERE id = ?`,
-    args: [id]
-  });
-  return mapRow(result.rows[0]);
+  return mapDoc(await reflections.findOne({ id }));
+}
+
+function isDuplicateKey(error) {
+  return error?.code === 11000;
 }
 
 export async function upsertReflection(input) {
   const now = new Date().toISOString();
+  const key = problemKey(input.contestId, input.problemIndex);
+  const fields = {
+    problemName: input.problemName,
+    rating: input.rating,
+    tags: input.tags,
+    problemUrl: input.problemUrl,
+    timeSpentSeconds: input.timeSpentSeconds,
+    keyObservation: input.keyObservation,
+    whatMadeMeStuck: input.whatMadeMeStuck,
+    stuckReason: input.stuckReason ?? null,
+    pattern: input.pattern,
+    futureTrigger: input.futureTrigger,
+    simplestImplementation: input.simplestImplementation,
+    updatedAt: now
+  };
 
-  await db.execute({
-    sql: `
-      INSERT INTO reflections (
-        contest_id,
-        problem_index,
-        problem_name,
-        rating,
-        tags_json,
-        problem_url,
-        time_spent_seconds,
-        key_observation,
-        what_made_me_stuck,
-        stuck_reason,
-        pattern,
-        future_trigger,
-        simplest_implementation,
-        created_at,
-        updated_at
-      )
-      VALUES (
-        :contestId,
-        :problemIndex,
-        :problemName,
-        :rating,
-        :tagsJson,
-        :problemUrl,
-        :timeSpentSeconds,
-        :keyObservation,
-        :whatMadeMeStuck,
-        :stuckReason,
-        :pattern,
-        :futureTrigger,
-        :simplestImplementation,
-        :now,
-        :now
-      )
-      ON CONFLICT(contest_id, problem_index)
-      DO UPDATE SET
-        problem_name = excluded.problem_name,
-        rating = excluded.rating,
-        tags_json = excluded.tags_json,
-        problem_url = excluded.problem_url,
-        time_spent_seconds = excluded.time_spent_seconds,
-        key_observation = excluded.key_observation,
-        what_made_me_stuck = excluded.what_made_me_stuck,
-        stuck_reason = excluded.stuck_reason,
-        pattern = excluded.pattern,
-        future_trigger = excluded.future_trigger,
-        simplest_implementation = excluded.simplest_implementation,
-        updated_at = excluded.updated_at
-    `,
-    args: {
-      contestId: input.contestId,
-      problemIndex: input.problemIndex,
-      problemName: input.problemName,
-      rating: input.rating,
-      tagsJson: JSON.stringify(input.tags),
-      problemUrl: input.problemUrl,
-      timeSpentSeconds: input.timeSpentSeconds,
-      keyObservation: input.keyObservation,
-      whatMadeMeStuck: input.whatMadeMeStuck,
-      stuckReason: input.stuckReason ?? null,
-      pattern: input.pattern,
-      futureTrigger: input.futureTrigger,
-      simplestImplementation: input.simplestImplementation,
-      now
+  // Edit in place when it exists; otherwise insert with a fresh id. If another
+  // request inserted the same problem in between, fall back to editing it.
+  const updated = await reflections.updateOne(key, { $set: fields });
+  if (updated.matchedCount === 0) {
+    try {
+      const id = await nextIds("reflections");
+      await reflections.insertOne({ id, ...key, ...fields, createdAt: now });
+    } catch (error) {
+      if (!isDuplicateKey(error)) throw error;
+      await reflections.updateOne(key, { $set: fields });
     }
-  });
+  }
 
-  return findByProblem(input.contestId, input.problemIndex);
+  return findByProblem(key.contestId, key.problemIndex);
 }
 
-// Statements (for a batch) that delete one problem's reflection and its review data
-export function reflectionDeleteStatements(contestId, problemIndex) {
-  const args = [Number(contestId), String(problemIndex).toUpperCase()];
-  const reflectionIds = `SELECT id FROM reflections WHERE contest_id = ? AND problem_index = ?`;
-  return [
-    ...reviewDeleteStatements(reflectionIds, args),
-    { sql: `DELETE FROM reflections WHERE contest_id = ? AND problem_index = ?`, args }
-  ];
+// Sets the time spent and/or the solved date; a null value leaves it unchanged
+export async function updateReflectionTimeAndDate(contestId, problemIndex, { timeSpentSeconds, date }, options = {}) {
+  const set = {};
+  if (timeSpentSeconds != null) set.timeSpentSeconds = timeSpentSeconds;
+  if (date != null) {
+    set.createdAt = date;
+    set.updatedAt = date;
+  }
+  if (Object.keys(set).length) {
+    await reflections.updateOne(problemKey(contestId, problemIndex), { $set: set }, options);
+  }
 }
 
-// Statements (for a batch) that delete every reflection and all review data
-export function allReflectionDeleteStatements() {
-  return [...allReviewDeleteStatements(), `DELETE FROM reflections`];
+// Deletes one problem's reflection and its review data. Pass { session } to
+// make it part of a transaction.
+export async function deleteReflection(contestId, problemIndex, options = {}) {
+  const key = problemKey(contestId, problemIndex);
+  const docs = await reflections.find(key, { projection: { id: 1 }, ...options }).toArray();
+  await deleteReviewData(docs.map(doc => doc.id), options);
+  await reflections.deleteMany(key, options);
+}
+
+// Deletes every reflection and all review data
+export async function deleteAllReflections(options = {}) {
+  await deleteAllReviewData(options);
+  await reflections.deleteMany({}, options);
 }
