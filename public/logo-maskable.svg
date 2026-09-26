@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CodeReflections">
+  <title>CodeReflections</title>
+  <defs>
+    <linearGradient id="cr-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a6cb3"/>
+      <stop offset="1" stop-color="#263961"/>
+    </linearGradient>
+    <linearGradient id="cr-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="cr-reflection" maskUnits="userSpaceOnUse" x="0" y="39" width="64" height="25">
+      <rect x="0" y="39" width="64" height="25" fill="url(#cr-fade)"/>
+    </mask>
+    <!-- The code glyph "</>", drawn above the waterline at y = 38 -->
+    <g id="cr-glyph" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.5">
+      <path d="M22 13 L11 25.5 L22 38" stroke="#fff"/>
+      <path d="M42 13 L53 25.5 L42 38" stroke="#fff"/>
+      <path d="M35.5 11 L28.5 38" stroke="#f5c542"/>
+    </g>
+  </defs>
+  <rect width="64" height="64" fill="url(#cr-tile)"/>
+  <g transform="translate(32 32) scale(0.8) translate(-32 -32)">
+  <use href="#cr-glyph"/>
+  <!-- Waterline -->
+  <rect x="9" y="41" width="46" height="2" rx="1" fill="#fff" opacity="0.35"/>
+  <!-- Reflection: the glyph mirrored about y = 42, fading out -->
+  <g mask="url(#cr-reflection)">
+    <use href="#cr-glyph" transform="translate(0 84) scale(1 -1)"/>
+  </g>
+  </g>
+</svg>
