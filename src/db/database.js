@@ -1,20 +1,35 @@
-import Database from "better-sqlite3";
+import { createClient } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dataDir = path.join(__dirname, "../../data");
 
-fs.mkdirSync(dataDir, { recursive: true });
+// Turso in production (TURSO_DATABASE_URL + TURSO_AUTH_TOKEN); a local SQLite
+// file otherwise, so development keeps using data/reflection.db as before.
+// A missing URL on Vercel is reported by dbReady() on every API call (instead
+// of crashing the function), and no query ever runs.
+let configError = null;
 
-export const db = new Database(path.join(dataDir, "reflection.db"));
+function databaseUrl() {
+  if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL;
+  if (process.env.VERCEL) {
+    configError = "TURSO_DATABASE_URL is not set. Add it in the Vercel project settings.";
+    return "file::memory:";
+  }
+  const dataDir = path.join(__dirname, "../../data");
+  fs.mkdirSync(dataDir, { recursive: true });
+  return `file:${path.join(dataDir, "reflection.db")}`;
+}
 
-export function initDb() {
-  db.pragma("journal_mode = WAL");
+export const db = createClient({
+  url: databaseUrl(),
+  authToken: process.env.TURSO_AUTH_TOKEN
+});
 
-  db.exec(`
+export async function initDb() {
+  await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS reflections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       contest_id INTEGER NOT NULL,
@@ -69,8 +84,22 @@ export function initDb() {
   `);
 
   // Added after the first release: why the problem got you stuck (optional)
-  const reflectionColumns = db.prepare(`PRAGMA table_info(reflections)`).all().map(c => c.name);
-  if (!reflectionColumns.includes("stuck_reason")) {
-    db.exec(`ALTER TABLE reflections ADD COLUMN stuck_reason TEXT`);
+  const columns = await db.execute(`PRAGMA table_info(reflections)`);
+  if (!columns.rows.some(column => column.name === "stuck_reason")) {
+    await db.execute(`ALTER TABLE reflections ADD COLUMN stuck_reason TEXT`);
   }
+}
+
+// Resolves once the schema is ready; every request waits on it (cold starts on
+// Vercel run initDb once per instance).
+let ready;
+export function dbReady() {
+  if (configError) return Promise.reject(new Error(configError));
+  if (!ready) {
+    ready = initDb().catch(error => {
+      ready = undefined;
+      throw error;
+    });
+  }
+  return ready;
 }

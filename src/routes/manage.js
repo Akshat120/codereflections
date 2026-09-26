@@ -2,21 +2,19 @@ import { Router } from "express";
 import { db } from "../db/database.js";
 import {
   findAll as findAllReflections,
-  deleteByProblem as deleteReflectionByProblem,
-  deleteAllReflections
+  reflectionDeleteStatements,
+  allReflectionDeleteStatements
 } from "../repositories/reflectionRepository.js";
 import {
   getAllQueue,
-  removeQueueProblem,
-  clearQueueAll
+  queueDeleteStatement
 } from "../repositories/queueRepository.js";
 
 export const manageRoutes = Router();
 
-manageRoutes.get("/problems", (_req, res) => {
+manageRoutes.get("/problems", async (_req, res) => {
   try {
-    const reflections = findAllReflections();
-    const queue = getAllQueue();
+    const [reflections, queue] = await Promise.all([findAllReflections(), getAllQueue()]);
 
     const problemMap = new Map();
 
@@ -83,7 +81,7 @@ manageRoutes.get("/problems", (_req, res) => {
   }
 });
 
-manageRoutes.delete("/problems/:contestId/:index", (req, res) => {
+manageRoutes.delete("/problems/:contestId/:index", async (req, res) => {
   const contestId = Number(req.params.contestId);
   const index = String(req.params.index).toUpperCase();
 
@@ -92,12 +90,11 @@ manageRoutes.delete("/problems/:contestId/:index", (req, res) => {
   }
 
   try {
-    const runDelete = db.transaction(() => {
-      deleteReflectionByProblem(contestId, index);
-      removeQueueProblem(contestId, index);
-    });
-
-    runDelete();
+    // Reflection, review data and queue entry go together or not at all
+    await db.batch([
+      ...reflectionDeleteStatements(contestId, index),
+      queueDeleteStatement(contestId, index)
+    ], "write");
 
     return res.json({
       success: true,
@@ -110,14 +107,9 @@ manageRoutes.delete("/problems/:contestId/:index", (req, res) => {
   }
 });
 
-  manageRoutes.delete("/problems", (_req, res) => {
+manageRoutes.delete("/problems", async (_req, res) => {
   try {
-    const runDeleteAll = db.transaction(() => {
-      deleteAllReflections();
-      clearQueueAll();
-    });
-
-    runDeleteAll();
+    await db.batch([...allReflectionDeleteStatements(), `DELETE FROM practice_queue`], "write");
 
     return res.json({
       success: true,
@@ -128,7 +120,7 @@ manageRoutes.delete("/problems/:contestId/:index", (req, res) => {
   }
 });
 
-const updateProblemHandler = (req, res) => {
+const updateProblemHandler = async (req, res) => {
   const contestId = Number(req.params.contestId);
   const index = String(req.params.index).toUpperCase();
 
@@ -156,51 +148,28 @@ const updateProblemHandler = (req, res) => {
   }
 
   try {
-    const runUpdate = db.transaction(() => {
-      // 1. Update reflections table if problem exists there
-      if (newTime != null && isoDate != null) {
-        db.prepare(`
+    // null leaves a field unchanged (COALESCE keeps the current value)
+    await db.batch([
+      {
+        sql: `
           UPDATE reflections
-          SET time_spent_seconds = ?, created_at = ?, updated_at = ?
+          SET time_spent_seconds = COALESCE(?, time_spent_seconds),
+              created_at = COALESCE(?, created_at),
+              updated_at = COALESCE(?, updated_at)
           WHERE contest_id = ? AND problem_index = ?
-        `).run(newTime, isoDate, isoDate, contestId, index);
-      } else if (newTime != null) {
-        db.prepare(`
-          UPDATE reflections
-          SET time_spent_seconds = ?
+        `,
+        args: [newTime, isoDate, isoDate, contestId, index]
+      },
+      {
+        sql: `
+          UPDATE practice_queue
+          SET time_spent_seconds = COALESCE(?, time_spent_seconds),
+              added_at = COALESCE(?, added_at)
           WHERE contest_id = ? AND problem_index = ?
-        `).run(newTime, contestId, index);
-      } else if (isoDate != null) {
-        db.prepare(`
-          UPDATE reflections
-          SET created_at = ?, updated_at = ?
-          WHERE contest_id = ? AND problem_index = ?
-        `).run(isoDate, isoDate, contestId, index);
+        `,
+        args: [newTime, isoDate, contestId, index]
       }
-
-      // 2. Update practice_queue table if problem exists there
-      if (newTime != null && isoDate != null) {
-        db.prepare(`
-          UPDATE practice_queue
-          SET time_spent_seconds = ?, added_at = ?
-          WHERE contest_id = ? AND problem_index = ?
-        `).run(newTime, isoDate, contestId, index);
-      } else if (newTime != null) {
-        db.prepare(`
-          UPDATE practice_queue
-          SET time_spent_seconds = ?
-          WHERE contest_id = ? AND problem_index = ?
-        `).run(newTime, contestId, index);
-      } else if (isoDate != null) {
-        db.prepare(`
-          UPDATE practice_queue
-          SET added_at = ?
-          WHERE contest_id = ? AND problem_index = ?
-        `).run(isoDate, contestId, index);
-      }
-    });
-
-    runUpdate();
+    ], "write");
 
     return res.json({
       success: true,

@@ -8,15 +8,15 @@ import {
 
 export const reviewRoutes = Router();
 
-reviewRoutes.get("/", (_req, res) => {
+reviewRoutes.get("/", async (_req, res) => {
   try {
-    return res.json({ intervals: INTERVAL_DAYS, reviews: findAllReviewStates() });
+    return res.json({ intervals: INTERVAL_DAYS, reviews: await findAllReviewStates() });
   } catch (_) {
     return res.status(500).json({ error: "Could not load review schedule." });
   }
 });
 
-reviewRoutes.post("/:reflectionId", (req, res) => {
+reviewRoutes.post("/:reflectionId", async (req, res) => {
   const reflectionId = Number(req.params.reflectionId);
   const grade = req.body?.grade;
 
@@ -28,7 +28,7 @@ reviewRoutes.post("/:reflectionId", (req, res) => {
   }
 
   try {
-    const state = recordReview(reflectionId, grade);
+    const state = await recordReview(reflectionId, grade);
     if (!state) {
       return res.status(404).json({ error: "Reflection not found." });
     }

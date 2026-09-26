@@ -1,5 +1,5 @@
 import { db } from "../db/database.js";
-import { deleteReviewData, deleteAllReviewData } from "./reviewRepository.js";
+import { reviewDeleteStatements, allReviewDeleteStatements } from "./reviewRepository.js";
 
 const selectBase = `
   SELECT
@@ -31,112 +31,113 @@ function mapRow(row) {
   };
 }
 
-export function findAll() {
-  return db
-    .prepare(`${selectBase} ORDER BY updated_at DESC`)
-    .all()
-    .map(mapRow);
+export async function findAll() {
+  const result = await db.execute(`${selectBase} ORDER BY updated_at DESC`);
+  return result.rows.map(mapRow);
 }
 
-export function findByProblem(contestId, problemIndex) {
-  return mapRow(
-    db
-      .prepare(
-        `${selectBase}
-         WHERE contest_id = ? AND problem_index = ?`
-      )
-      .get(contestId, problemIndex)
-  );
+export async function findByProblem(contestId, problemIndex) {
+  const result = await db.execute({
+    sql: `${selectBase} WHERE contest_id = ? AND problem_index = ?`,
+    args: [contestId, problemIndex]
+  });
+  return mapRow(result.rows[0]);
 }
 
-export function findById(id) {
-  return mapRow(
-    db
-      .prepare(
-        `${selectBase}
-         WHERE id = ?`
-      )
-      .get(id)
-  );
+export async function findById(id) {
+  const result = await db.execute({
+    sql: `${selectBase} WHERE id = ?`,
+    args: [id]
+  });
+  return mapRow(result.rows[0]);
 }
 
-export function upsertReflection(input) {
+export async function upsertReflection(input) {
   const now = new Date().toISOString();
 
-  const sql = `
-    INSERT INTO reflections (
-      contest_id,
-      problem_index,
-      problem_name,
-      rating,
-      tags_json,
-      problem_url,
-      time_spent_seconds,
-      key_observation,
-      what_made_me_stuck,
-      stuck_reason,
-      pattern,
-      future_trigger,
-      simplest_implementation,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      @contestId,
-      @problemIndex,
-      @problemName,
-      @rating,
-      @tagsJson,
-      @problemUrl,
-      @timeSpentSeconds,
-      @keyObservation,
-      @whatMadeMeStuck,
-      @stuckReason,
-      @pattern,
-      @futureTrigger,
-      @simplestImplementation,
-      @now,
-      @now
-    )
-    ON CONFLICT(contest_id, problem_index)
-    DO UPDATE SET
-      problem_name = excluded.problem_name,
-      rating = excluded.rating,
-      tags_json = excluded.tags_json,
-      problem_url = excluded.problem_url,
-      time_spent_seconds = excluded.time_spent_seconds,
-      key_observation = excluded.key_observation,
-      what_made_me_stuck = excluded.what_made_me_stuck,
-      stuck_reason = excluded.stuck_reason,
-      pattern = excluded.pattern,
-      future_trigger = excluded.future_trigger,
-      simplest_implementation = excluded.simplest_implementation,
-      updated_at = excluded.updated_at
-  `;
-
-  db.prepare(sql).run({
-    ...input,
-    tagsJson: JSON.stringify(input.tags),
-    now
+  await db.execute({
+    sql: `
+      INSERT INTO reflections (
+        contest_id,
+        problem_index,
+        problem_name,
+        rating,
+        tags_json,
+        problem_url,
+        time_spent_seconds,
+        key_observation,
+        what_made_me_stuck,
+        stuck_reason,
+        pattern,
+        future_trigger,
+        simplest_implementation,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        :contestId,
+        :problemIndex,
+        :problemName,
+        :rating,
+        :tagsJson,
+        :problemUrl,
+        :timeSpentSeconds,
+        :keyObservation,
+        :whatMadeMeStuck,
+        :stuckReason,
+        :pattern,
+        :futureTrigger,
+        :simplestImplementation,
+        :now,
+        :now
+      )
+      ON CONFLICT(contest_id, problem_index)
+      DO UPDATE SET
+        problem_name = excluded.problem_name,
+        rating = excluded.rating,
+        tags_json = excluded.tags_json,
+        problem_url = excluded.problem_url,
+        time_spent_seconds = excluded.time_spent_seconds,
+        key_observation = excluded.key_observation,
+        what_made_me_stuck = excluded.what_made_me_stuck,
+        stuck_reason = excluded.stuck_reason,
+        pattern = excluded.pattern,
+        future_trigger = excluded.future_trigger,
+        simplest_implementation = excluded.simplest_implementation,
+        updated_at = excluded.updated_at
+    `,
+    args: {
+      contestId: input.contestId,
+      problemIndex: input.problemIndex,
+      problemName: input.problemName,
+      rating: input.rating,
+      tagsJson: JSON.stringify(input.tags),
+      problemUrl: input.problemUrl,
+      timeSpentSeconds: input.timeSpentSeconds,
+      keyObservation: input.keyObservation,
+      whatMadeMeStuck: input.whatMadeMeStuck,
+      stuckReason: input.stuckReason ?? null,
+      pattern: input.pattern,
+      futureTrigger: input.futureTrigger,
+      simplestImplementation: input.simplestImplementation,
+      now
+    }
   });
 
   return findByProblem(input.contestId, input.problemIndex);
 }
 
-export function deleteByProblem(contestId, problemIndex) {
-  const existing = findByProblem(Number(contestId), String(problemIndex).toUpperCase());
-  if (existing) deleteReviewData(existing.id);
-
-  const stmt = db.prepare(`
-    DELETE FROM reflections
-    WHERE contest_id = ? AND problem_index = ?
-  `);
-  const result = stmt.run(Number(contestId), String(problemIndex).toUpperCase());
-  return result.changes > 0;
+// Statements (for a batch) that delete one problem's reflection and its review data
+export function reflectionDeleteStatements(contestId, problemIndex) {
+  const args = [Number(contestId), String(problemIndex).toUpperCase()];
+  const reflectionIds = `SELECT id FROM reflections WHERE contest_id = ? AND problem_index = ?`;
+  return [
+    ...reviewDeleteStatements(reflectionIds, args),
+    { sql: `DELETE FROM reflections WHERE contest_id = ? AND problem_index = ?`, args }
+  ];
 }
 
-export function deleteAllReflections() {
-  deleteAllReviewData();
-  const result = db.prepare(`DELETE FROM reflections`).run();
-  return result.changes;
+// Statements (for a batch) that delete every reflection and all review data
+export function allReflectionDeleteStatements() {
+  return [...allReviewDeleteStatements(), `DELETE FROM reflections`];
 }

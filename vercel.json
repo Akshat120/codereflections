@@ -1,0 +1,33 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "regions": [
+    "dub1"
+  ],
+  "redirects": [
+    {
+      "source": "/journal",
+      "destination": "/progress",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/(load|problem|reflect|review|practice|progress|rule|edit-reflection|manage-problems|stuck-reasons|tag-times)",
+      "destination": "/index.html"
+    }
+  ]
+}

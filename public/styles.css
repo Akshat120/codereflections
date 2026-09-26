@@ -3967,3 +3967,13 @@ pre.prettyprint.cf-source {
 [data-theme="dark"] .weak-single td {
   background: transparent;
 }
+
+/* Header "Log out" link (shown only when a password is set) */
+.header-logout {
+  font-size: 13px;
+  color: #0000cc;
+  text-decoration: underline;
+}
+[data-theme="dark"] .header-logout {
+  color: #58a6ff;
+}

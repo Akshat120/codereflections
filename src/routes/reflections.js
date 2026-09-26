@@ -53,9 +53,9 @@ function validateBody(body) {
   return null;
 }
 
-reflectionRoutes.get("/", (_req, res) => {
+reflectionRoutes.get("/", async (_req, res) => {
   try {
-    return res.json(findAll());
+    return res.json(await findAll());
   } catch (_) {
     return res.status(500).json({
       error: "Could not load reflections from the database."
@@ -63,14 +63,14 @@ reflectionRoutes.get("/", (_req, res) => {
   }
 });
 
-reflectionRoutes.get("/by-id/:id", (req, res) => {
+reflectionRoutes.get("/by-id/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     return res.status(400).json({ error: "Invalid reflection ID." });
   }
 
   try {
-    const reflection = findById(id);
+    const reflection = await findById(id);
     if (!reflection) {
       return res.status(404).json({ error: "Reflection not found." });
     }
@@ -82,7 +82,7 @@ reflectionRoutes.get("/by-id/:id", (req, res) => {
   }
 });
 
-reflectionRoutes.get("/:contestId/:index", (req, res) => {
+reflectionRoutes.get("/:contestId/:index", async (req, res) => {
   const contestId = Number(req.params.contestId);
   const problemIndex = String(req.params.index).toUpperCase();
 
@@ -91,7 +91,7 @@ reflectionRoutes.get("/:contestId/:index", (req, res) => {
   }
 
   try {
-    const reflection = findByProblem(contestId, problemIndex);
+    const reflection = await findByProblem(contestId, problemIndex);
 
     if (!reflection) {
       return res.status(404).json({ error: "Reflection not found." });
@@ -105,7 +105,7 @@ reflectionRoutes.get("/:contestId/:index", (req, res) => {
   }
 });
 
-reflectionRoutes.post("/", (req, res) => {
+reflectionRoutes.post("/", async (req, res) => {
   const error = validateBody(req.body);
 
   if (error) {
@@ -133,16 +133,16 @@ reflectionRoutes.post("/", (req, res) => {
   }
 
   try {
-    const isEdit = Boolean(findByProblem(input.contestId, input.problemIndex));
-    if (!isEdit && !findQueueProblem(input.contestId, input.problemIndex)) {
+    const isEdit = Boolean(await findByProblem(input.contestId, input.problemIndex));
+    if (!isEdit && !(await findQueueProblem(input.contestId, input.problemIndex))) {
       return res.status(409).json({
         error: "This problem is no longer in your practice queue."
       });
     }
 
-    const reflection = upsertReflection(input);
+    const reflection = await upsertReflection(input);
     try {
-      removeQueueProblem(input.contestId, input.problemIndex);
+      await removeQueueProblem(input.contestId, input.problemIndex);
     } catch (_) {}
     return res.status(201).json(reflection);
   } catch (_) {

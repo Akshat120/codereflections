@@ -1,3 +1,16 @@
+// When the server has a password set (always on Vercel), an expired or missing
+// session makes any /api call return 401: send the user to the login page and
+// bring them back here afterwards.
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
+  const response = await nativeFetch(input, init);
+  const url = typeof input === "string" ? input : input?.url || "";
+  if (response.status === 401 && /^\/api\//.test(new URL(url, location.href).pathname) && !url.includes("/api/login")) {
+    location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`;
+  }
+  return response;
+};
+
 const state = {
   problems: [],
   activeProblemId: null,
@@ -3914,8 +3927,26 @@ function initTheme() {
 }
 
 // Initial bootstrap
+// Shows "Log out" in the header when the server requires a password
+async function initSession() {
+  try {
+    const res = await fetch("/api/session");
+    if (!res.ok) return;
+    const { authEnabled } = await res.json();
+    const logout = document.getElementById("btn-logout");
+    if (!logout || !authEnabled) return;
+    logout.classList.remove("hidden");
+    logout.addEventListener("click", async (event) => {
+      event.preventDefault();
+      await fetch("/api/logout", { method: "POST" });
+      location.href = "/login";
+    });
+  } catch (_) {}
+}
+
 async function initApp() {
   initTheme();
+  initSession();
   await loadStuckReasons();
   await syncQueueFromDb();
   renderProblemViews();

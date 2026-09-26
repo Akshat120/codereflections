@@ -1,0 +1,10 @@
+# Never upload local data or secrets with `vercel` deploys
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+.env
+.env.*
+node_modules/
+.claude/

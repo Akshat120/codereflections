@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in · CodeReflections</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script>
+    (function() {
+      try {
+        const savedTheme = localStorage.getItem("cf_theme");
+        const dark = savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      } catch (_) {}
+    })();
+  </script>
+  <style>
+    .login-wrap { max-width: 360px; margin: 60px auto; padding: 0 16px; }
+    .login-brand { display: flex; justify-content: center; margin-bottom: 18px; }
+    .login-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .login-field label { font-weight: bold; font-size: 13px; }
+    .login-field input { padding: 6px 8px; font-size: 14px; border: 1px solid #b9b9b9; border-radius: 3px; }
+    .login-error { color: #c00000; font-size: 13px; min-height: 18px; margin: 0 0 8px; }
+    [data-theme="dark"] .login-field input { background: #1a1c1e; border-color: #4f555a; color: #e6edf3; }
+    [data-theme="dark"] .login-error { color: #ff7b72; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-brand">
+      <span class="brand">
+        <span class="brand-bars" aria-hidden="true">
+          <span class="bar bar-a"></span>
+          <span class="bar bar-b"></span>
+          <span class="bar bar-c"></span>
+        </span>
+        <span class="brand-titles">
+          <span class="brand-text" aria-label="CodeReflections"><span class="brand-code" aria-hidden="true"><span class="brand-cap">C</span>ode</span><span class="brand-forces" aria-hidden="true"><span class="brand-cap">R</span>eflections</span></span>
+          <span class="brand-sub">Deliberate Practice <b>Journal</b></span>
+        </span>
+      </span>
+    </div>
+
+    <section class="roundbox">
+      <div class="caption">Log in</div>
+      <div class="roundbox-body">
+        <form id="login-form">
+          <div class="login-field">
+            <label for="password">Password</label>
+            <input type="password" id="password" autocomplete="current-password" required autofocus>
+          </div>
+          <p class="login-error" id="login-error" role="alert"></p>
+          <button type="submit" class="btn">Log in</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById("login-form");
+    const errorEl = document.getElementById("login-error");
+
+    // Only same-site paths are allowed as the post-login destination
+    function nextPath() {
+      const next = new URLSearchParams(location.search).get("next") || "/";
+      return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      errorEl.textContent = "";
+      const button = form.querySelector("button");
+      button.disabled = true;
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: document.getElementById("password").value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          location.href = nextPath();
+          return;
+        }
+        errorEl.textContent = data.error || "Could not log in.";
+      } catch (_) {
+        errorEl.textContent = "Could not reach the server.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

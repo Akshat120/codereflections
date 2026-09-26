@@ -34,13 +34,14 @@ const selectStates = `
   LEFT JOIN review_state s ON s.reflection_id = r.id
 `;
 
-export function findAllReviewStates() {
-  return db.prepare(selectStates).all().map(mapRow);
+export async function findAllReviewStates() {
+  const result = await db.execute(selectStates);
+  return result.rows.map(mapRow);
 }
 
-export function findReviewState(reflectionId) {
-  const row = db.prepare(`${selectStates} WHERE r.id = ?`).get(reflectionId);
-  return row ? mapRow(row) : null;
+export async function findReviewState(reflectionId) {
+  const result = await db.execute({ sql: `${selectStates} WHERE r.id = ?`, args: [reflectionId] });
+  return result.rows[0] ? mapRow(result.rows[0]) : null;
 }
 
 // Next state for a grade, from the current one.
@@ -67,38 +68,45 @@ export function nextState(current, grade, now = new Date()) {
   };
 }
 
-export function recordReview(reflectionId, grade) {
-  const current = findReviewState(reflectionId);
+export async function recordReview(reflectionId, grade) {
+  const current = await findReviewState(reflectionId);
   if (!current) return null;
 
   const next = nextState(current, grade);
 
-  db.transaction(() => {
-    db.prepare(`
-      INSERT INTO review_state (reflection_id, stage, due_at, last_reviewed_at, reviews, lapses)
-      VALUES (@reflectionId, @stage, @dueAt, @lastReviewedAt, @reviews, @lapses)
-      ON CONFLICT(reflection_id) DO UPDATE SET
-        stage = excluded.stage,
-        due_at = excluded.due_at,
-        last_reviewed_at = excluded.last_reviewed_at,
-        reviews = excluded.reviews,
-        lapses = excluded.lapses
-    `).run({ reflectionId, ...next });
-
-    db.prepare(`
-      INSERT INTO review_log (reflection_id, grade, reviewed_at) VALUES (?, ?, ?)
-    `).run(reflectionId, grade, next.lastReviewedAt);
-  })();
+  // State and log are written together or not at all
+  await db.batch([
+    {
+      sql: `
+        INSERT INTO review_state (reflection_id, stage, due_at, last_reviewed_at, reviews, lapses)
+        VALUES (:reflectionId, :stage, :dueAt, :lastReviewedAt, :reviews, :lapses)
+        ON CONFLICT(reflection_id) DO UPDATE SET
+          stage = excluded.stage,
+          due_at = excluded.due_at,
+          last_reviewed_at = excluded.last_reviewed_at,
+          reviews = excluded.reviews,
+          lapses = excluded.lapses
+      `,
+      args: { reflectionId, ...next }
+    },
+    {
+      sql: `INSERT INTO review_log (reflection_id, grade, reviewed_at) VALUES (?, ?, ?)`,
+      args: [reflectionId, grade, next.lastReviewedAt]
+    }
+  ], "write");
 
   return findReviewState(reflectionId);
 }
 
-export function deleteReviewData(reflectionId) {
-  db.prepare(`DELETE FROM review_state WHERE reflection_id = ?`).run(reflectionId);
-  db.prepare(`DELETE FROM review_log WHERE reflection_id = ?`).run(reflectionId);
+// Statements (for a batch) deleting review data of the reflections selected by
+// `reflectionIdsSql` (a SELECT id ... subquery) with its `args`
+export function reviewDeleteStatements(reflectionIdsSql, args) {
+  return [
+    { sql: `DELETE FROM review_state WHERE reflection_id IN (${reflectionIdsSql})`, args },
+    { sql: `DELETE FROM review_log WHERE reflection_id IN (${reflectionIdsSql})`, args }
+  ];
 }
 
-export function deleteAllReviewData() {
-  db.prepare(`DELETE FROM review_state`).run();
-  db.prepare(`DELETE FROM review_log`).run();
+export function allReviewDeleteStatements() {
+  return [`DELETE FROM review_state`, `DELETE FROM review_log`];
 }
