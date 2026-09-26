@@ -66,6 +66,20 @@
     </section>
   </div>
 
+  <footer class="site-footer">
+    <div class="site-footer-inner">
+      <img class="site-footer-logo" src="/logo.svg" alt="" width="20" height="20">
+      <span><b>CodeReflections</b> · Deliberate practice journal for competitive programmers</span>
+    </div>
+    <div class="site-footer-note">
+      © <span class="site-footer-year">2026</span> Akshat Dhiman · Problems belong to their authors on
+      <a href="https://codeforces.com" target="_blank" rel="noopener">Codeforces</a>; this project is not affiliated with Codeforces.
+    </div>
+  </footer>
+  <script>
+    for (const el of document.querySelectorAll(".site-footer-year")) el.textContent = new Date().getFullYear();
+  </script>
+
   <script>
     const form = document.getElementById("login-form");
     const errorEl = document.getElementById("login-error");
