@@ -296,6 +296,42 @@ a:hover {
   min-width: 0;
 }
 
+/* Site footer, on every page */
+.site-footer {
+  max-width: 1180px;
+  margin: 8px auto 0;
+  padding: 14px 12px 22px;
+  border-top: 1px solid #e1e1e1;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #777;
+}
+
+.site-footer-inner {
+  color: #444;
+}
+
+/* Inline, so the logo stays with the first words when the line wraps */
+.site-footer-logo {
+  display: inline-block;
+  vertical-align: middle;
+  margin: -3px 6px 0 0;
+}
+
+.site-footer-note {
+  margin-top: 4px;
+}
+
+[data-theme="dark"] .site-footer {
+  border-top-color: #383c40;
+  color: #8b949e;
+}
+
+[data-theme="dark"] .site-footer-inner {
+  color: #c4c9cd;
+}
+
 /* ==========================================================================
    Blog Post Announcement Cards (Home Page)
    ========================================================================== */
