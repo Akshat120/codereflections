@@ -1,4 +1,10 @@
-# Problem Reflection
+<p align="center">
+  <img src="public/logo.svg" alt="CodeReflections logo" width="96" height="96">
+</p>
+
+<h1 align="center">CodeReflections</h1>
+
+<p align="center"><b>Deliberate Practice Journal</b>: turn every hard Codeforces problem into a lesson.</p>
 
 A Node.js + Express monolith that helps competitive programmers turn each difficult Codeforces problem into reusable knowledge.
 
