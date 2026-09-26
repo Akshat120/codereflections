@@ -1,4 +1,6 @@
-import { db } from "../db/database.js";
+import { collections, withTransaction } from "../db/database.js";
+
+const { reflections, reviewState, reviewLog } = collections;
 
 // Days until the next review, indexed by stage. "Remembered" moves a
 // reflection one stage further out; "forgot" sends it back to stage 0.
@@ -11,37 +13,38 @@ function addDays(date, days) {
   return new Date(date.getTime() + days * DAY_MS).toISOString();
 }
 
-function mapRow(row) {
-  const stage = row.stage ?? 0;
+// A reflection without a review_state document has never been reviewed and
+// is first due one day after it was solved.
+function mapState(reflection, state) {
+  const stage = state?.stage ?? 0;
   return {
-    reflectionId: row.id,
-    contestId: row.contest_id,
-    index: row.problem_index,
+    reflectionId: reflection.id,
+    contestId: reflection.contestId,
+    index: reflection.problemIndex,
     stage,
     intervalDays: INTERVAL_DAYS[stage],
-    // Never reviewed: first due one day after the problem was solved
-    dueAt: row.due_at ?? addDays(new Date(row.created_at), INTERVAL_DAYS[0]),
-    lastReviewedAt: row.last_reviewed_at ?? null,
-    reviews: row.reviews ?? 0,
-    lapses: row.lapses ?? 0
+    dueAt: state?.dueAt ?? addDays(new Date(reflection.createdAt), INTERVAL_DAYS[0]),
+    lastReviewedAt: state?.lastReviewedAt ?? null,
+    reviews: state?.reviews ?? 0,
+    lapses: state?.lapses ?? 0
   };
 }
 
-const selectStates = `
-  SELECT r.id, r.contest_id, r.problem_index, r.created_at,
-         s.stage, s.due_at, s.last_reviewed_at, s.reviews, s.lapses
-  FROM reflections r
-  LEFT JOIN review_state s ON s.reflection_id = r.id
-`;
+const reflectionFields = { projection: { _id: 0, id: 1, contestId: 1, problemIndex: 1, createdAt: 1 } };
 
 export async function findAllReviewStates() {
-  const result = await db.execute(selectStates);
-  return result.rows.map(mapRow);
+  const [allReflections, states] = await Promise.all([
+    reflections.find({}, reflectionFields).toArray(),
+    reviewState.find({}).toArray()
+  ]);
+  const stateById = new Map(states.map(state => [state.reflectionId, state]));
+  return allReflections.map(reflection => mapState(reflection, stateById.get(reflection.id)));
 }
 
 export async function findReviewState(reflectionId) {
-  const result = await db.execute({ sql: `${selectStates} WHERE r.id = ?`, args: [reflectionId] });
-  return result.rows[0] ? mapRow(result.rows[0]) : null;
+  const reflection = await reflections.findOne({ id: reflectionId }, reflectionFields);
+  if (!reflection) return null;
+  return mapState(reflection, await reviewState.findOne({ reflectionId }));
 }
 
 // Next state for a grade, from the current one.
@@ -75,38 +78,30 @@ export async function recordReview(reflectionId, grade) {
   const next = nextState(current, grade);
 
   // State and log are written together or not at all
-  await db.batch([
-    {
-      sql: `
-        INSERT INTO review_state (reflection_id, stage, due_at, last_reviewed_at, reviews, lapses)
-        VALUES (:reflectionId, :stage, :dueAt, :lastReviewedAt, :reviews, :lapses)
-        ON CONFLICT(reflection_id) DO UPDATE SET
-          stage = excluded.stage,
-          due_at = excluded.due_at,
-          last_reviewed_at = excluded.last_reviewed_at,
-          reviews = excluded.reviews,
-          lapses = excluded.lapses
-      `,
-      args: { reflectionId, ...next }
-    },
-    {
-      sql: `INSERT INTO review_log (reflection_id, grade, reviewed_at) VALUES (?, ?, ?)`,
-      args: [reflectionId, grade, next.lastReviewedAt]
-    }
-  ], "write");
+  await withTransaction(async session => {
+    await reviewState.updateOne(
+      { reflectionId },
+      { $set: next },
+      { upsert: true, session }
+    );
+    await reviewLog.insertOne(
+      { reflectionId, grade, reviewedAt: next.lastReviewedAt },
+      { session }
+    );
+  });
 
   return findReviewState(reflectionId);
 }
 
-// Statements (for a batch) deleting review data of the reflections selected by
-// `reflectionIdsSql` (a SELECT id ... subquery) with its `args`
-export function reviewDeleteStatements(reflectionIdsSql, args) {
-  return [
-    { sql: `DELETE FROM review_state WHERE reflection_id IN (${reflectionIdsSql})`, args },
-    { sql: `DELETE FROM review_log WHERE reflection_id IN (${reflectionIdsSql})`, args }
-  ];
+// Deletes the review data of the given reflection ids
+export async function deleteReviewData(reflectionIds, options = {}) {
+  if (!reflectionIds.length) return;
+  const filter = { reflectionId: { $in: reflectionIds } };
+  await reviewState.deleteMany(filter, options);
+  await reviewLog.deleteMany(filter, options);
 }
 
-export function allReviewDeleteStatements() {
-  return [`DELETE FROM review_state`, `DELETE FROM review_log`];
+export async function deleteAllReviewData(options = {}) {
+  await reviewState.deleteMany({}, options);
+  await reviewLog.deleteMany({}, options);
 }

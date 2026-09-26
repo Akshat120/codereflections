@@ -1312,7 +1312,7 @@ function startTimer() {
       updateTimer();
       saveTimerState();
 
-      // Periodic auto-sync to SQLite database every 10 seconds
+      // Periodic auto-sync to the database every 10 seconds
       if (currentNow - lastDbSyncTime >= 10000) {
         lastDbSyncTime = currentNow;
         syncActiveProblemTimeToDb();

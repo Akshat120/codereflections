@@ -1,97 +1,95 @@
-import { createClient } from "@libsql/client";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { MongoClient } from "mongodb";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Turso in production (TURSO_DATABASE_URL + TURSO_AUTH_TOKEN); a local SQLite
-// file otherwise, so development keeps using data/reflection.db as before.
-// A missing URL on Vercel is reported by dbReady() on every API call (instead
+// MongoDB connection. MONGODB_URI points at the server (a MongoDB Atlas cluster
+// in production); locally it defaults to a mongod on this machine. MONGODB_DB
+// picks the database (default "codereflections").
+//
+// A missing URI on Vercel is reported by dbReady() on every API call (instead
 // of crashing the function), and no query ever runs.
+const DEFAULT_LOCAL_URI = "mongodb://127.0.0.1:27017";
+const DEFAULT_DB_NAME = "codereflections";
+
 let configError = null;
 
-function databaseUrl() {
-  if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL;
+function databaseUri() {
+  if (process.env.MONGODB_URI) return process.env.MONGODB_URI;
   if (process.env.VERCEL) {
-    configError = "TURSO_DATABASE_URL is not set. Add it in the Vercel project settings.";
-    return "file::memory:";
+    configError = "MONGODB_URI is not set. Add it in the Vercel project settings.";
   }
-  const dataDir = path.join(__dirname, "../../data");
-  fs.mkdirSync(dataDir, { recursive: true });
-  return `file:${path.join(dataDir, "reflection.db")}`;
+  return DEFAULT_LOCAL_URI;
 }
 
-export const db = createClient({
-  url: databaseUrl(),
-  authToken: process.env.TURSO_AUTH_TOKEN
+// One client per process. On Vercel, warm invocations of the same instance
+// reuse it (and its connection pool) through globalThis.
+const globalCache = globalThis.__codeReflectionsMongo ??= {};
+
+export const client = globalCache.client ??= new MongoClient(databaseUri(), {
+  serverSelectionTimeoutMS: 10000,
+  appName: "codereflections"
 });
 
+export const db = client.db(process.env.MONGODB_DB || DEFAULT_DB_NAME);
+
+export const collections = {
+  reflections: db.collection("reflections"),
+  queue: db.collection("practice_queue"),
+  reviewState: db.collection("review_state"),
+  reviewLog: db.collection("review_log"),
+  counters: db.collection("counters")
+};
+
 export async function initDb() {
-  await db.executeMultiple(`
-    CREATE TABLE IF NOT EXISTS reflections (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      contest_id INTEGER NOT NULL,
-      problem_index TEXT NOT NULL,
-      problem_name TEXT NOT NULL,
-      rating INTEGER,
-      tags_json TEXT NOT NULL DEFAULT '[]',
-      problem_url TEXT NOT NULL,
-      time_spent_seconds INTEGER NOT NULL DEFAULT 0,
-      key_observation TEXT NOT NULL,
-      what_made_me_stuck TEXT NOT NULL,
-      pattern TEXT NOT NULL,
-      future_trigger TEXT NOT NULL,
-      simplest_implementation TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      UNIQUE(contest_id, problem_index)
-    );
+  await client.connect();
+  await Promise.all([
+    collections.reflections.createIndexes([
+      { key: { contestId: 1, problemIndex: 1 }, unique: true },
+      { key: { id: 1 }, unique: true },
+      { key: { updatedAt: -1 } }
+    ]),
+    collections.queue.createIndexes([
+      { key: { contestId: 1, index: 1 }, unique: true },
+      { key: { id: 1 }, unique: true }
+    ]),
+    collections.reviewState.createIndex({ reflectionId: 1 }, { unique: true }),
+    collections.reviewLog.createIndex({ reflectionId: 1 })
+  ]);
+  transactionsSupported = await detectTransactionSupport();
+}
 
-    CREATE TABLE IF NOT EXISTS practice_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      contest_id INTEGER NOT NULL,
-      problem_index TEXT NOT NULL,
-      problem_name TEXT NOT NULL,
-      rating INTEGER,
-      tags_json TEXT NOT NULL DEFAULT '[]',
-      problem_url TEXT NOT NULL,
-      time_spent_seconds INTEGER NOT NULL DEFAULT 0,
-      timer_running INTEGER NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'queued',
-      added_at TEXT NOT NULL,
-      UNIQUE(contest_id, problem_index)
-    );
+// Integer ids (reflections are linked and ordered by id in the UI, the queue
+// is ordered by id). Reserves `count` consecutive ids and returns the first.
+export async function nextIds(name, count = 1, options = {}) {
+  const counter = await collections.counters.findOneAndUpdate(
+    { _id: name },
+    { $inc: { seq: count } },
+    { upsert: true, returnDocument: "after", ...options }
+  );
+  return counter.seq - count + 1;
+}
 
-    -- Spaced-repetition state per reflection. A reflection without a row here
-    -- has never been reviewed and is first due one day after it was solved.
-    CREATE TABLE IF NOT EXISTS review_state (
-      reflection_id INTEGER PRIMARY KEY,
-      stage INTEGER NOT NULL DEFAULT 0,
-      due_at TEXT NOT NULL,
-      last_reviewed_at TEXT,
-      reviews INTEGER NOT NULL DEFAULT 0,
-      lapses INTEGER NOT NULL DEFAULT 0
-    );
+// Transactions need a replica set or sharded cluster (Atlas always is). A
+// standalone local mongod has none, so writes then run one after another.
+let transactionsSupported = false;
 
-    CREATE TABLE IF NOT EXISTS review_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      reflection_id INTEGER NOT NULL,
-      grade TEXT NOT NULL,
-      reviewed_at TEXT NOT NULL
-    );
-  `);
+async function detectTransactionSupport() {
+  const hello = await db.admin().command({ hello: 1 });
+  return Boolean(hello.setName || hello.msg === "isdbgrid");
+}
 
-  // Added after the first release: why the problem got you stuck (optional)
-  const columns = await db.execute(`PRAGMA table_info(reflections)`);
-  if (!columns.rows.some(column => column.name === "stuck_reason")) {
-    await db.execute(`ALTER TABLE reflections ADD COLUMN stuck_reason TEXT`);
+// Runs `work(session)` as one all-or-nothing transaction when the server
+// supports it. `work` must pass { session } to every operation it runs.
+export async function withTransaction(work) {
+  if (!transactionsSupported) return work(undefined);
+  const session = client.startSession();
+  try {
+    return await session.withTransaction(() => work(session));
+  } finally {
+    await session.endSession();
   }
 }
 
-// Resolves once the schema is ready; every request waits on it (cold starts on
-// Vercel run initDb once per instance).
+// Resolves once connected and indexed; every request waits on it (cold starts
+// on Vercel run initDb once per instance).
 let ready;
 export function dbReady() {
   if (configError) return Promise.reject(new Error(configError));

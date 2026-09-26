@@ -8,7 +8,7 @@ A Node.js + Express monolith that helps competitive programmers turn each diffic
 2. The server fetches problem metadata (name, rating, tags, contest ID, index).
 3. Solve the problem while the app tracks time spent.
 4. Fill out five mandatory post-solve reflection questions on one page.
-5. Save the reflection to SQLite.
+5. Save the reflection to MongoDB.
 6. Review completed problems from your personal journal.
 
 ## Architecture
@@ -22,47 +22,59 @@ Express server
   │    ├── GET /api/problems/:contestId/:index
   │    └── /api/reflections
   ├── Codeforces API client (server-side only)
-  └── SQLite repository (local file, or Turso in production)
+  └── MongoDB repositories (local mongod, or MongoDB Atlas in production)
 ```
 
 ## Run locally
+
+You need a MongoDB server: install [MongoDB Community](https://www.mongodb.com/docs/manual/installation/), run it in Docker (`docker run -d -p 27017:27017 mongo:7`), or point `MONGODB_URI` at a free Atlas cluster.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Locally the app stores everything in `data/reflection.db` (a SQLite file) and needs no login.
+Open [http://localhost:3000](http://localhost:3000). Locally the app connects to `mongodb://127.0.0.1:27017`, uses the `codereflections` database, and needs no login.
 
 Optional environment variables:
 
 | Variable | Effect |
 |---|---|
+| `MONGODB_URI` | MongoDB connection string (default `mongodb://127.0.0.1:27017`; required on Vercel) |
+| `MONGODB_DB` | Database name (default `codereflections`) |
 | `APP_PASSWORD` | Require this password to use the app (always required on Vercel) |
 | `SESSION_SECRET` | Key for signing login cookies (defaults to one derived from `APP_PASSWORD`) |
-| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Use a Turso database instead of the local file |
 
-## Deploy to Vercel + Turso (free)
+### Data model
 
-1. **Create the database** (install the [Turso CLI](https://docs.turso.tech/cli/installation) and log in):
+| Collection | Contents |
+|---|---|
+| `reflections` | One document per solved problem, unique on `(contestId, problemIndex)`, with an integer `id` |
+| `practice_queue` | Problems waiting to be solved, unique on `(contestId, index)`, ordered by integer `id` |
+| `review_state` | Spaced-repetition state per reflection (`reflectionId`) |
+| `review_log` | Every review grade given |
+| `counters` | Next integer id for `reflections` and `practice_queue` |
+
+Writes that touch several collections (deleting a problem, recording a review, adding several problems to the queue) run in a transaction on a replica set or Atlas cluster. A standalone `mongod` has no transactions, so there they run one after another.
+
+## Deploy to Vercel + MongoDB Atlas (free)
+
+1. **Create the database**: create a free (M0) cluster in [MongoDB Atlas](https://www.mongodb.com/cloud/atlas), add a database user, and allow access from anywhere (`0.0.0.0/0`, since Vercel functions have no fixed IP). Copy the connection string (`mongodb+srv://...`).
+2. **Copy your old journal into it** (optional; from the local `data/reflection.db` SQLite file or a Turso database, keeping ids and review history):
    ```bash
-   turso db create codereflections
-   turso db show codereflections --url
-   turso db tokens create codereflections
-   ```
-2. **Copy your journal into it** (reflections, queue and review history, keeping ids):
-   ```bash
-   TURSO_DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..." npm run migrate:turso
+   MONGODB_URI="mongodb+srv://..." npm run migrate:mongo
+   # from Turso instead of the local file:
+   SOURCE_DATABASE_URL="libsql://..." SOURCE_AUTH_TOKEN="..." MONGODB_URI="mongodb+srv://..." npm run migrate:mongo
    ```
    It refuses to write into a database that already has data; add `--force` to replace it.
 3. **Deploy**: import the repository in Vercel (framework preset "Other"; `vercel.json` sets the build) and add these environment variables:
-   - `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`: from step 1
+   - `MONGODB_URI`: from step 1 (and `MONGODB_DB` if you don't use the default name)
    - `APP_PASSWORD`: the password you'll log in with (the API refuses to run on Vercel without it)
 4. Open the site, log in, done.
 
-`vercel.json` runs the API in Vercel's Dublin region (`dub1`) to sit next to a Turso database in `aws-eu-west-1`; change `regions` if you create the database elsewhere.
+`vercel.json` runs the API in Vercel's Dublin region (`dub1`); create the Atlas cluster in a nearby region (e.g. AWS `eu-west-1`, Ireland) or change `regions`.
 
-How it runs on Vercel: `public/` is served by the CDN (`npm run build` copies KaTeX and Prettify into `public/vendor/`), and every `/api/*` request goes to one serverless function (`api/index.js`) running the same Express app as locally.
+How it runs on Vercel: `public/` is served by the CDN (`npm run build` copies KaTeX and Prettify into `public/vendor/`), and every `/api/*` request goes to one serverless function (`api/index.js`) running the same Express app as locally. Warm invocations reuse one MongoDB connection pool.
 
 ## API
 

@@ -7,13 +7,14 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "build": "node scripts/copy-vendor.js",
-    "migrate:turso": "node scripts/migrate-to-turso.js"
+    "migrate:mongo": "node scripts/migrate-to-mongo.js"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
     "code-prettify": "^0.1.0",
     "express": "^5.1.0",
-    "katex": "^0.16.47"
+    "katex": "^0.16.47",
+    "mongodb": "^6.21.0"
   },
   "engines": {
     "node": "22.x"
