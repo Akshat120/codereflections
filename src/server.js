@@ -10,6 +10,6 @@ const HOST = process.env.HOST || (authEnabled() ? "0.0.0.0" : "127.0.0.1");
 
 await dbReady();
 
-app.listen(PORT, HOST, () => {
+app.listen(PORT, () => {
   console.log(`CodeReflections running at http://localhost:${PORT}`);
 });
