@@ -4,31 +4,53 @@ import { MongoClient } from "mongodb";
 // in production); locally it defaults to a mongod on this machine. MONGODB_DB
 // picks the database (default "codereflections").
 //
-// A missing URI on Vercel is reported by dbReady() on every API call (instead
-// of crashing the function), and no query ever runs.
+// A missing or malformed URI is reported by dbReady() on every API call
+// (instead of crashing the function, which would take login down with it), and
+// no query ever runs.
 const DEFAULT_LOCAL_URI = "mongodb://127.0.0.1:27017";
 const DEFAULT_DB_NAME = "codereflections";
 
-let configError = null;
-
-function databaseUri() {
-  if (process.env.MONGODB_URI) return process.env.MONGODB_URI;
-  if (process.env.VERCEL) {
-    configError = "MONGODB_URI is not set. Add it in the Vercel project settings.";
-  }
-  return DEFAULT_LOCAL_URI;
-}
-
-// One client per process. On Vercel, warm invocations of the same instance
-// reuse it (and its connection pool) through globalThis.
-const globalCache = globalThis.__codeReflectionsMongo ??= {};
-
-export const client = globalCache.client ??= new MongoClient(databaseUri(), {
+const clientOptions = {
   // Fail fast when the server is unreachable (e.g. an Atlas cluster whose
   // Network Access list doesn't allow Vercel): the UI waits on the first calls
   serverSelectionTimeoutMS: 5000,
   appName: "codereflections"
-});
+};
+
+// Forgives the usual paste slips: surrounding whitespace or quotes
+function databaseUri() {
+  const uri = (process.env.MONGODB_URI || "").trim().replace(/^(["'])(.*)\1$/, "$2").trim();
+  if (uri) return { uri };
+  if (process.env.VERCEL) {
+    return { uri: DEFAULT_LOCAL_URI, error: "MONGODB_URI is not set. Add it in the Vercel project settings." };
+  }
+  return { uri: DEFAULT_LOCAL_URI };
+}
+
+function createClient() {
+  const { uri, error } = databaseUri();
+  if (/<[^>]*password[^>]*>/i.test(uri)) {
+    return {
+      client: new MongoClient(DEFAULT_LOCAL_URI, clientOptions),
+      configError: "MONGODB_URI still contains the <db_password> placeholder. Replace it with the database user's password."
+    };
+  }
+  try {
+    return { client: new MongoClient(uri, clientOptions), configError: error ?? null };
+  } catch (parseError) {
+    return {
+      client: new MongoClient(DEFAULT_LOCAL_URI, clientOptions),
+      configError: `MONGODB_URI is not a valid connection string (${parseError.message}). ` +
+        "Copy it again from Atlas (Connect → Drivers); URL-encode special characters in the password (@ → %40, : → %3A, / → %2F)."
+    };
+  }
+}
+
+// One client per process. On Vercel, warm invocations of the same instance
+// reuse it (and its connection pool) through globalThis.
+const cached = globalThis.__codeReflectionsMongo ??= createClient();
+const { configError } = cached;
+export const client = cached.client;
 
 export const db = client.db(process.env.MONGODB_DB || DEFAULT_DB_NAME);
 
@@ -90,6 +112,24 @@ export async function withTransaction(work) {
   }
 }
 
+// Adds what to check to the driver's errors for the usual misconfigurations
+function explain(error) {
+  const message = (error?.message || String(error)).replace(/\.+$/, "");
+  if (/bad auth|authentication failed/i.test(message)) {
+    return `${message}. Check the username and password in MONGODB_URI against Atlas → Database Access (URL-encode special characters in the password).`;
+  }
+  if (/querySrv|ENOTFOUND|EBADNAME/i.test(message)) {
+    return `${message}. The cluster address in MONGODB_URI looks wrong (or the password has an unencoded @); copy the string again from Atlas → Connect → Drivers.`;
+  }
+  if (/Server selection timed out|ECONNREFUSED|ETIMEDOUT|ECONNRESET|SSL|TLS/i.test(message)) {
+    return `${message}. The cluster can't be reached: allow 0.0.0.0/0 in Atlas → Network Access, and check the cluster isn't paused.`;
+  }
+  if (/not authorized|Unauthorized/i.test(message)) {
+    return `${message}. Give the database user the "Read and write to any database" role in Atlas → Database Access.`;
+  }
+  return message;
+}
+
 // Resolves once connected and indexed; every request waits on it (cold starts
 // on Vercel run initDb once per instance).
 let ready;
@@ -98,7 +138,7 @@ export function dbReady() {
   if (!ready) {
     ready = initDb().catch(error => {
       ready = undefined;
-      throw error;
+      throw new Error(explain(error));
     });
   }
   return ready;
