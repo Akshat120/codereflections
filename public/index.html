@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeReflections</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cuprum:ital,wght@0,400..700;1,400..700&family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="/styles.css">
+  <script>
+    (function() {
+      try {
+        const savedTheme = localStorage.getItem("cf_theme");
+        if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        } else {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      } catch (_) {}
+    })();
+  </script>
+</head>
+<body>
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="header-top">
+      <div class="brand-block">
+        <a class="brand" href="/" data-route="home">
+          <span class="brand-bars" aria-hidden="true">
+            <span class="bar bar-a"></span>
+            <span class="bar bar-b"></span>
+            <span class="bar bar-c"></span>
+          </span>
+          <div class="brand-titles">
+            <span class="brand-text" aria-label="CodeReflections"><span class="brand-code" aria-hidden="true"><span class="brand-cap">C</span>ode</span><span class="brand-forces" aria-hidden="true"><span class="brand-cap">R</span>eflections</span></span>
+            <span class="brand-sub">Deliberate Practice <b>Journal</b></span>
+          </div>
+        </a>
+      </div>
+      <div class="header-right">
+        <button type="button" id="btn-theme-toggle" class="cf-theme-toggle-btn" title="Toggle dark/light theme" aria-label="Toggle dark theme">
+          <span class="theme-icon">🌙</span>
+          <span class="theme-text">Dark Theme</span>
+        </button>
+      </div>
+    </div>
+    <div class="nav-container">
+      <nav class="main-nav" aria-label="CodeReflections Navigation">
+        <div class="nav-links">
+          <a class="nav-link active" href="/" data-route="home">HOME</a>
+          <a class="nav-link" href="/load" data-route="load">LOAD</a>
+          <a class="nav-link" href="/problem" data-route="problem">PROBLEM</a>
+          <a class="nav-link" href="/reflect" data-route="reflect">REFLECT</a>
+          <a class="nav-link" href="/review" data-route="review">REVIEW</a>
+          <a class="nav-link" href="/progress" data-route="progress">PROGRESS</a>
+          <a class="nav-link" href="/rule" data-route="rule">RULE</a>
+          <a class="nav-link" href="/manage-problems" data-route="manage-problems">MANAGE</a>
+          <a class="nav-link nav-external" href="https://codeforces.com/problemset" target="_blank" rel="noopener">CODEFORCES</a>
+        </div>
+        <div class="nav-search">
+          <input type="text" id="nav-search-input" placeholder="Problem (e.g. 1904A)" aria-label="Search or load problem">
+          <span class="nav-search-btn">🔍</span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class="page-wrap">
+    <main class="content-column">
+      <!-- HOME (CodeReflections Practice Hub) -->
+      <div class="app-page" data-page="home">
+        <header class="page-intro">
+          <h1 class="page-title">Dashboard</h1>
+          <p id="dash-date">Your practice at a glance.</p>
+        </header>
+
+        <section class="roundbox">
+          <div class="caption">Today</div>
+          <div class="roundbox-body dash-flush">
+            <table class="dash-today-table">
+              <thead>
+                <tr>
+                  <th>Reflections today</th>
+                  <th>Time today</th>
+                  <th>This week</th>
+                  <th>Due for review</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td id="dash-today-count">0</td>
+                  <td id="dash-today-time">0m</td>
+                  <td id="dash-week-count">0</td>
+                  <td id="dash-due-count">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="roundbox-footer dash-today-footer">
+            <span id="dash-today-note"></span>
+            <span id="dash-review"></span>
+          </div>
+        </section>
+
+        <section class="roundbox">
+          <div class="caption">Recent reflections</div>
+          <div class="roundbox-body dash-flush">
+            <div id="dash-recent"></div>
+          </div>
+          <div class="roundbox-footer"><a href="/progress" data-route="progress">All reflections →</a></div>
+        </section>
+      </div>
+
+      <!-- LOAD -->
+      <div class="app-page hidden" data-page="load">
+        <header class="page-intro">
+          <h1 class="page-title">Load a Codeforces Problem</h1>
+          <p>Paste problem URLs or codes (single or comma/space-separated, e.g. <code>1904A, 1904B, 1904C</code>). Only one problem is active in the solve session at a time.</p>
+        </header>
+        <section class="roundbox">
+          <div class="caption">Add Problems to Practice Queue</div>
+          <div class="roundbox-body">
+            <form id="problem-form" class="url-row">
+              <input id="problem-url" class="url-input"
+                placeholder="e.g. 1904A, 1904B, 1904C or problem URLs"
+                autocomplete="off">
+              <button class="btn primary" type="submit">Load Problem(s)</button>
+            </form>
+            <div id="message" class="message hidden"></div>
+            <p class="hint">
+              Supports single codes/URLs or multiple separated by commas or spaces. All loaded problems appear in your queue on the Problems page.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <!-- PROBLEM -->
+      <div class="app-page hidden" data-page="problem">
+        <header class="page-intro">
+          <h1 class="page-title">Problems &amp; Practice Queue</h1>
+          <p>Manage your practice queue. Only the active problem runs the stopwatch timer.</p>
+        </header>
+        <div id="problem-empty" class="roundbox">
+          <div class="caption">No active problems</div>
+          <div class="roundbox-body">
+            <p>Your practice queue is empty. Load one or more Codeforces problems to start solving.</p>
+            <p><a class="btn primary" href="/load" data-route="load">Go to Load Problems</a></p>
+          </div>
+        </div>
+
+        <!-- Active Problem Content Card -->
+        <section id="problem-content" class="roundbox hidden">
+          <div class="caption" id="active-problem-caption">Active Solve Session</div>
+          <div class="roundbox-body">
+            <div class="problem-main">
+              <table class="info-table">
+                <tbody>
+                  <tr class="timer-row">
+                    <th>Time spent</th>
+                    <td>
+                      <span id="timer" class="timer-value">00:00:00</span>
+                      <button id="pause-btn" class="btn btn-sm" type="button">Pause</button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Problem name</th>
+                    <td id="problem-title" class="readonly"></td>
+                  </tr>
+                  <tr>
+                    <th>Rating</th>
+                    <td><span id="problem-rating" class="readonly"></span></td>
+                  </tr>
+                  <tr>
+                    <th>Contest ID</th>
+                    <td id="problem-contest-id" class="readonly"></td>
+                  </tr>
+                  <tr>
+                    <th>Problem index</th>
+                    <td id="problem-index" class="readonly"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="roundbox-footer action-buttons">
+            <a class="btn primary" href="/reflect" data-route="reflect">Continue to reflection →</a>
+            <a class="btn" href="/load" data-route="load">Load another problem</a>
+          </div>
+        </section>
+
+        <!-- Problem Queue Table Card -->
+        <section id="problem-queue-card" class="roundbox hidden">
+          <div class="caption" id="queue-caption">Practice Queue</div>
+          <div class="roundbox-body queue-table-wrap">
+            <table class="queue-table">
+              <thead>
+                <tr>
+                  <th class="col-cf-id">#</th>
+                  <th class="col-cf-when">When</th>
+                  <th class="col-cf-problem">Problem</th>
+                  <th class="col-cf-rating">Rating</th>
+                  <th class="col-cf-verdict">Verdict</th>
+                  <th class="col-cf-time">Time</th>
+                  <th class="col-cf-action">Action</th>
+                </tr>
+              </thead>
+              <tbody id="queue-table-body">
+              </tbody>
+            </table>
+          </div>
+          <div class="roundbox-footer action-buttons">
+            <a class="btn" href="/load" data-route="load">+ Add more problems</a>
+            <button type="button" id="btn-clear-queue" class="btn">Clear queue</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- REFLECT -->
+      <div class="app-page hidden" data-page="reflect">
+        <header class="page-intro">
+          <h1 class="page-title">Post-Solve Reflection</h1>
+          <p>Answer all five questions after you finish solving.</p>
+        </header>
+        <div id="reflect-empty" class="roundbox">
+          <div class="caption">No active problem</div>
+          <div class="roundbox-body">
+            <p>Load a problem before writing a reflection.</p>
+            <p><a class="btn primary" href="/load" data-route="load">Go to Load</a></p>
+          </div>
+        </div>
+        <section id="reflect-content" class="roundbox hidden">
+          <div class="caption">Post-solve reflection</div>
+          <div class="roundbox-body">
+            <p id="reflect-context" class="reflect-context"></p>
+
+            <!-- View Mode: Codeforces Spoilers -->
+            <div id="reflect-view-card" class="cf-spoilers-wrap">
+              <!-- 1. Key observation -->
+              <div class="spoiler">
+                <div class="spoiler-title">
+                  <svg class="spoiler-arrow" viewBox="0 0 10 10"><polygon points="2,1 8,5 2,9"/></svg>
+                  <span class="spoiler-label">Key observation</span>
+                </div>
+                <div id="view-q0" class="spoiler-content markdown-body"></div>
+              </div>
+
+              <!-- 2. What made me stuck -->
+              <div class="spoiler">
+                <div class="spoiler-title">
+                  <svg class="spoiler-arrow" viewBox="0 0 10 10"><polygon points="2,1 8,5 2,9"/></svg>
+                  <span class="spoiler-label">What made me stuck</span>
+                </div>
+                <div id="view-q1" class="spoiler-content markdown-body"></div>
+              </div>
+
+              <!-- 3. Pattern -->
+              <div class="spoiler">
+                <div class="spoiler-title">
+                  <svg class="spoiler-arrow" viewBox="0 0 10 10"><polygon points="2,1 8,5 2,9"/></svg>
+                  <span class="spoiler-label">Pattern</span>
+                </div>
+                <div id="view-q2" class="spoiler-content markdown-body"></div>
+              </div>
+
+              <!-- 4. Future recognition -->
+              <div class="spoiler">
+                <div class="spoiler-title">
+                  <svg class="spoiler-arrow" viewBox="0 0 10 10"><polygon points="2,1 8,5 2,9"/></svg>
+                  <span class="spoiler-label">Future recognition</span>
+                </div>
+                <div id="view-q3" class="spoiler-content markdown-body"></div>
+              </div>
+
+              <!-- 5. Simplest implementation -->
+              <div class="spoiler">
+                <div class="spoiler-title">
+                  <svg class="spoiler-arrow" viewBox="0 0 10 10"><polygon points="2,1 8,5 2,9"/></svg>
+                  <span class="spoiler-label">Simplest implementation</span>
+                </div>
+                <div id="view-q4" class="spoiler-content markdown-body spoiler-code-content"></div>
+              </div>
+
+              <!-- Footer: Problem Link and Actions outside spoiler -->
+              <div class="journal-detail-footer">
+                <div class="journal-detail-link">
+                  Problem Link: <a id="view-problem-link" href="#" target="_blank" rel="noopener">Codeforces Problem Link ↗</a>
+                </div>
+                <div class="journal-detail-actions action-buttons">
+                  <button type="button" id="btn-edit-reflection" class="btn primary">Edit</button>
+                  <a class="btn" href="/progress" data-route="progress">Progress</a>
+                  <a class="btn" href="/problem" data-route="problem">← Back to Problem</a>
+                  <span id="view-save-status" class="save-status"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Edit Mode: Pure Codeforces form table -->
+            <form id="reflection-form" class="hidden">
+              <table class="info-table reflection-table reflection-form-table">
+                <tbody>
+                  <tr>
+                    <th>
+                      Key observation
+                      <div class="hint">The idea that unlocked the problem.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="q0">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="q0" class="cf-textarea md-textarea" placeholder="What was the idea that unlocked the problem?" required></textarea>
+                        <div id="q0-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      What made me stuck
+                      <div class="hint">Where you spent time / what was missing.</div>
+                    </th>
+                    <td>
+                      <div class="stuck-reason-field">
+                        <label for="q-stuck-reason">Main reason:</label>
+                        <select id="q-stuck-reason" class="cf-select stuck-reason-select" required>
+                          <option value="">Select why you got stuck…</option>
+                        </select>
+                      </div>
+                      <div class="md-editor-box" data-target="q1">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="q1" class="cf-textarea md-textarea" placeholder="Where did you spend the most time? What were you missing?" required></textarea>
+                        <div id="q1-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      Pattern
+                      <div class="hint">Algorithm, technique, or recurring pattern.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="q2">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="q2" class="cf-textarea md-textarea" placeholder="Think about the algorithm, technique, or recurring pattern." required></textarea>
+                        <div id="q2-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      Future recognition
+                      <div class="hint">Clue or trigger you want to recognize next time.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="q3">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="q3" class="cf-textarea md-textarea" placeholder="Write the clue or trigger you want to recognize next time." required></textarea>
+                        <div id="q3-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      Simplest implementation
+                      <div class="hint">Clean implementation in your own words.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="q4">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="q4" class="cf-textarea cf-code-textarea md-textarea" placeholder="Describe the clean implementation in your own words." required></textarea>
+                        <div id="q4-preview" class="md-preview markdown-body spoiler-code-content hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="roundbox-footer action-buttons">
+                <button class="btn primary" type="submit">Save reflection</button>
+                <button type="button" id="btn-toggle-all-preview" class="btn">Preview All 👁️</button>
+                <button type="button" id="btn-cancel-edit" class="btn">Cancel</button>
+                <a class="btn" href="/problem" data-route="problem">← Back to Problem</a>
+                <span id="save-status" class="save-status"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      <!-- EDIT REFLECTION -->
+      <div class="app-page hidden" data-page="edit-reflection">
+        <header class="page-intro">
+          <h1 class="page-title">Edit Reflection</h1>
+          <p>Update your reflection notes and lessons for your solved problem.</p>
+        </header>
+
+        <!-- Empty state when no reflections exist in database -->
+        <div id="edit-reflection-empty" class="roundbox hidden">
+          <div class="caption">No reflection found</div>
+          <div class="roundbox-body">
+            <p>No saved reflections found to edit.</p>
+            <p><a class="btn primary" href="/progress" data-route="progress">Go to Progress</a></p>
+          </div>
+        </div>
+
+        <!-- Edit Form Card -->
+        <section id="edit-reflection-card" class="roundbox hidden">
+          <div class="caption" id="edit-reflection-caption">Reflection Details</div>
+          <div class="roundbox-body">
+            <!-- Problem Context Summary -->
+            <table class="info-table" style="margin-bottom: 14px;">
+              <tbody>
+                <tr>
+                  <th style="width: 140px;">Problem</th>
+                  <td>
+                    <b id="edit-problem-title">—</b>
+                    <span id="edit-problem-rating" style="margin-left: 8px;"></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Codeforces Link</th>
+                  <td>
+                    <a id="edit-problem-link" href="#" target="_blank" rel="noopener">—</a>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Time Spent</th>
+                  <td id="edit-problem-time">—</td>
+                </tr>
+                <tr>
+                  <th>Problem Tags</th>
+                  <td>
+                    <div class="spoiler" style="margin: 0;">
+                      <div class="spoiler-title">
+                        <svg class="spoiler-arrow" viewBox="0 0 10 10"><polygon points="2,1 8,5 2,9"/></svg>
+                        <span class="spoiler-label">Problem tags</span>
+                      </div>
+                      <div id="edit-view-tags" class="spoiler-content spoiler-tags-content"></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <form id="edit-reflection-form">
+              <input type="hidden" id="edit-ref-id" value="">
+              <input type="hidden" id="edit-ref-contest-id" value="">
+              <input type="hidden" id="edit-ref-problem-index" value="">
+              <input type="hidden" id="edit-ref-problem-name" value="">
+              <input type="hidden" id="edit-ref-problem-url" value="">
+              <input type="hidden" id="edit-ref-rating" value="">
+              <input type="hidden" id="edit-ref-tags" value="">
+              <input type="hidden" id="edit-ref-time" value="">
+
+              <table class="info-table reflection-table reflection-form-table">
+                <tbody>
+                  <tr>
+                    <th>
+                      Key observation
+                      <div class="hint">The idea that unlocked the problem.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="edit-q0">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="edit-q0" class="cf-textarea md-textarea" placeholder="What was the idea that unlocked the problem?" required></textarea>
+                        <div id="edit-q0-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      What made me stuck
+                      <div class="hint">Where you spent time / what was missing.</div>
+                    </th>
+                    <td>
+                      <div class="stuck-reason-field">
+                        <label for="edit-stuck-reason">Main reason:</label>
+                        <select id="edit-stuck-reason" class="cf-select stuck-reason-select">
+                          <option value="">— Not set —</option>
+                        </select>
+                      </div>
+                      <div class="md-editor-box" data-target="edit-q1">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="edit-q1" class="cf-textarea md-textarea" placeholder="Where did you spend the most time? What were you missing?" required></textarea>
+                        <div id="edit-q1-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      Pattern
+                      <div class="hint">Algorithm, technique, or recurring pattern.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="edit-q2">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="edit-q2" class="cf-textarea md-textarea" placeholder="Think about the algorithm, technique, or recurring pattern." required></textarea>
+                        <div id="edit-q2-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      Future recognition
+                      <div class="hint">Clue or trigger you want to recognize next time.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="edit-q3">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="edit-q3" class="cf-textarea md-textarea" placeholder="Write the clue or trigger you want to recognize next time." required></textarea>
+                        <div id="edit-q3-preview" class="md-preview markdown-body hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>
+                      Simplest implementation
+                      <div class="hint">Clean implementation in your own words.</div>
+                    </th>
+                    <td>
+                      <div class="md-editor-box" data-target="edit-q4">
+                        <div class="md-editor-bar">
+                          <div class="md-tab-group">
+                            <button type="button" class="md-tab active" data-tab="write">Write</button>
+                            <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                          </div>
+                          <div class="md-tools">
+                            <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                            <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                            <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                            <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                            <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                            <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                            <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                          </div>
+                        </div>
+                        <textarea id="edit-q4" class="cf-textarea cf-code-textarea md-textarea" placeholder="Describe the clean implementation in your own words." required></textarea>
+                        <div id="edit-q4-preview" class="md-preview markdown-body spoiler-code-content hidden"></div>
+                        <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="roundbox-footer action-buttons">
+                <button class="btn primary" type="submit">Save Changes</button>
+                <button type="button" id="btn-toggle-edit-all-preview" class="btn">Preview All 👁️</button>
+                <a class="btn" href="/manage-problems" data-route="manage-problems">Back</a>
+                <span id="edit-save-status" class="save-status"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      <!-- PROGRESS -->
+      <div class="app-page hidden" data-page="progress">
+        <header class="page-intro">
+          <h1 class="page-title">Your Progress</h1>
+          <p>Completed problem reflections and practice history. Click a row to expand reflection notes.</p>
+        </header>
+
+        <!-- Completed Reflections Data Table Section -->
+        <section class="roundbox">
+          <div class="caption" id="progress-table-caption">Completed Reflections</div>
+          <div class="progress-reason-filter hidden" id="progress-reason-filter"></div>
+          <div class="roundbox-body journal-wrap">
+            <div id="history-progress" class="history-table"></div>
+            <div id="history" class="hidden"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- RULE -->
+      <div class="app-page hidden" data-page="rule">
+        <header class="page-intro">
+          <h1 class="page-title">Reflection Rule</h1>
+          <p>How to turn one hard solve into durable skill.</p>
+        </header>
+        <section class="roundbox">
+          <div class="caption">After a difficult problem</div>
+          <div class="roundbox-body">
+            <p>
+              Don't immediately force another problem of the same difficulty. Slow down and
+              extract the lesson while it is still fresh.
+            </p>
+            <p>Spend <b>10–15 minutes</b> writing down:</p>
+            <ul class="rule-list">
+              <li><b>Observation</b> — the key idea that unlocked the problem.</li>
+              <li><b>Mistake</b> — what made you stuck and how you escaped.</li>
+              <li><b>Pattern</b> — the algorithm family or technique name.</li>
+              <li><b>Future recognition</b> — what you will look for next time.</li>
+              <li><b>Implementation</b> — the simplest clean way to code it.</li>
+            </ul>
+            <p class="hint">These map directly to the five questions on the Reflect page.</p>
+          </div>
+        </section>
+        <section class="roundbox">
+          <div class="caption">How the app works</div>
+          <div class="roundbox-body">
+            <ol class="workflow-list">
+              <li>
+                <strong>Load Problem:</strong> Paste any Codeforces URL or code (e.g., <code>1904A</code>) on the <a href="/load" data-route="load">Load</a> page. Metadata, rating, and tags are fetched automatically.
+              </li>
+              <li>
+                <strong>Solve &amp; Track:</strong> Open the problem on Codeforces and tackle it while the live stopwatch runs on the <a href="/problem" data-route="problem">Problem</a> page.
+              </li>
+              <li>
+                <strong>Reflect Deeply:</strong> Complete five structured reflection prompts on the <a href="/reflect" data-route="reflect">Reflect</a> page before moving on.
+              </li>
+              <li>
+                <strong>Review &amp; Master:</strong> Search, filter, and review your historical insights in your personal <a href="/progress" data-route="progress">Progress</a>.
+              </li>
+            </ol>
+          </div>
+        </section>
+      </div>
+
+      <!-- STUCK REASONS (full list behind the dashboard's "Stuck reasons" box) -->
+      <div class="app-page hidden" data-page="stuck-reasons">
+        <header class="page-intro">
+          <h1 class="page-title">Stuck Reasons</h1>
+          <p>Why you got stuck, across all your reflections. Click a reason to see those reflections on Progress. <a href="/tag-times" data-route="tag-times">Tags by time →</a></p>
+        </header>
+
+        <section class="roundbox">
+          <div class="caption" id="weak-reasons-caption">All stuck reasons</div>
+          <div class="roundbox-body dash-flush" id="weak-reasons-body"></div>
+          <div class="roundbox-footer side-note">Uses the reason picked on each reflection; reflections without one are matched by keywords in their answers.</div>
+        </section>
+      </div>
+
+      <!-- TAGS BY TIME (full list behind the dashboard's "Slowest tags" box) -->
+      <div class="app-page hidden" data-page="tag-times">
+        <header class="page-intro">
+          <h1 class="page-title">Tags by Time</h1>
+          <p>Which topics take you longest, across all your reflections. Click a tag to see those reflections on Progress. <a href="/stuck-reasons" data-route="stuck-reasons">Stuck reasons →</a></p>
+        </header>
+
+        <section class="roundbox">
+          <div class="caption" id="weak-tags-caption">All tags</div>
+          <div class="roundbox-body dash-flush" id="weak-tags-body"></div>
+          <div class="roundbox-footer side-note">Slowest first. Tags with a single problem are listed but not ranked on the dashboard.</div>
+        </section>
+      </div>
+
+      <!-- REVIEW -->
+      <div class="app-page hidden" data-page="review">
+        <header class="page-intro">
+          <h1 class="page-title">Review</h1>
+          <p>Recall each problem's key idea before revealing your reflection, then grade yourself honestly. What you remember comes back later; what you forget comes back tomorrow.</p>
+        </header>
+
+        <section class="roundbox">
+          <div class="caption" id="review-caption">Review session</div>
+          <div class="roundbox-body" id="review-body">
+            <p class="dash-muted">Loading…</p>
+          </div>
+        </section>
+
+        <section class="roundbox">
+          <div class="caption">Schedule</div>
+          <div class="roundbox-body" id="review-schedule"></div>
+        </section>
+      </div>
+
+      <!-- PRACTICE (Redirect / Fallback) -->
+      <div class="app-page hidden" data-page="practice">
+        <div id="practice-page-idle" class="hidden"></div>
+        <div id="practice-page-active" class="hidden">
+          <a id="practice-page-problem" href="#"></a>
+          <span id="practice-page-timer"></span>
+        </div>
+      </div>
+
+      <!-- MANAGE DATABASE PROBLEMS -->
+      <div class="app-page hidden" data-page="manage-problems">
+        <header class="page-intro">
+          <h1 class="page-title">Manage Database Problems</h1>
+          <p>Remove problems from everywhere in the database (reflections, practice queue, and active session).</p>
+        </header>
+
+        <section class="roundbox">
+          <div class="caption">Database Records Overview</div>
+          <div class="roundbox-body" style="padding: 0;">
+            <div id="manage-status-msg" class="message-banner hidden" style="margin: 10px;"></div>
+            <div class="queue-table-wrap">
+              <table class="manage-table queue-table">
+                <thead>
+                  <tr>
+                    <th style="width: 75px; text-align: center;">Code</th>
+                    <th class="col-name" style="text-align: left;">Problem Name</th>
+                    <th style="width: 70px; text-align: center;">Rating</th>
+                    <th class="col-time" style="width: 80px; text-align: center;">Time</th>
+                    <th style="width: 105px; text-align: center;">Solved At</th>
+                    <th style="width: 210px; text-align: center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="manage-problems-body">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: #888; padding: 20px;">Loading database records…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar">
+      <!-- Widget 1: Pay attention -->
+      <div class="roundbox pay-attention-widget">
+        <div class="caption">Pay attention</div>
+        <div class="roundbox-body">
+          <!-- Active Practice Session Tracker -->
+          <div id="practice-active" class="practice-active hidden">
+            <div class="contest-subhead">Active solve session</div>
+            <div class="contest-link">
+              <a id="practice-problem" href="#" target="_blank" rel="noopener">—</a>
+            </div>
+            <div class="contest-countdown">
+              <span id="practice-timer" class="practice-timer">00:00:00</span>
+            </div>
+            <div class="sidebar-more" style="text-align: center; margin-bottom: 6px;">
+              <a href="/problem" data-route="problem">Problem &amp; timer →</a> &middot;
+              <a href="/reflect" data-route="reflect">Reflection →</a>
+            </div>
+          </div>
+          <!-- Idle Practice State -->
+          <div id="practice-idle" class="session-attention-box">
+            <div class="contest-subhead">Current session</div>
+            <div class="contest-link session-idle-notice">
+              No active problem loaded
+            </div>
+            <div class="sidebar-more" style="text-align: center;">
+              <a class="btn primary" href="/load" data-route="load" style="font-size: 12px;">Load a problem →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Widget 3: Your Progress -->
+      <div class="roundbox">
+        <div class="caption">Your Progress</div>
+        <div class="roundbox-body progress-stats">
+          <div class="stat-row">
+            <span>Problems reflected</span>
+            <b id="stat-problems">0</b>
+          </div>
+          <div class="stat-row">
+            <span>Total time</span>
+            <b id="stat-total-time">0m</b>
+          </div>
+          <div class="stat-row">
+            <span>Average time</span>
+            <b id="stat-avg-time">—</b>
+          </div>
+          <div class="stat-row">
+            <span>Average rating</span>
+            <b id="stat-avg-rating">—</b>
+          </div>
+          <p class="sidebar-more"><a href="/progress" data-route="progress">Full progress →</a></p>
+        </div>
+      </div>
+
+      <!-- Widget 4: Filter Reflections (Under Your Progress on Progress page) -->
+      <div class="roundbox cf-filter-box hidden" id="progress-filter-sidebar-widget">
+        <div class="caption">Filter Reflections</div>
+        <div class="roundbox-body cf-filter-body">
+          <form id="progress-filter-form" class="cf-filter-form" onsubmit="return false;">
+            <!-- Rating Division / Rank Pills -->
+            <div class="cf-filter-pills-row">
+              <span class="cf-filter-row-label">Category:</span>
+              <div class="cf-filter-pills" id="progress-rating-pills">
+                <button type="button" class="cf-filter-pill active" data-rating-filter="all">All</button>
+                <button type="button" class="cf-filter-pill" data-rating-filter="0-1199">&lt;1200</button>
+                <button type="button" class="cf-filter-pill" data-rating-filter="1200-1399">1200–1399</button>
+                <button type="button" class="cf-filter-pill" data-rating-filter="1400-1599">1400–1599</button>
+                <button type="button" class="cf-filter-pill" data-rating-filter="1600-1899">1600–1899</button>
+                <button type="button" class="cf-filter-pill" data-rating-filter="1900-2099">1900–2099</button>
+                <button type="button" class="cf-filter-pill" data-rating-filter="2100+">2100+</button>
+                <button type="button" class="cf-filter-pill" data-rating-filter="unrated">Unrated</button>
+              </div>
+            </div>
+
+            <!-- Filter Fields Stacked for Sidebar -->
+            <div class="cf-sidebar-filter-fields">
+              <!-- Search Problem -->
+              <div class="cf-filter-field cf-field-search">
+                <label for="progress-search-input" class="cf-filter-label">Search:</label>
+                <input type="text" id="progress-search-input" class="cf-input" placeholder="Name, ID (e.g. 1904A), or note…" autocomplete="off">
+              </div>
+
+              <!-- Tag Filter -->
+              <div class="cf-filter-field cf-field-tag">
+                <label for="progress-tag-filter" class="cf-filter-label">Tag:</label>
+                <select id="progress-tag-filter" class="cf-select">
+                  <option value="all">All tags</option>
+                </select>
+              </div>
+
+              <!-- Difficulty Range (Codeforces Min - Max) -->
+              <div class="cf-filter-field cf-field-difficulty">
+                <label class="cf-filter-label">Difficulty:</label>
+                <div class="cf-difficulty-inputs">
+                  <input type="number" id="progress-rating-min" class="cf-input cf-num-input" placeholder="min" min="800" max="3500" step="100">
+                  <span class="cf-range-sep">—</span>
+                  <input type="number" id="progress-rating-max" class="cf-input cf-num-input" placeholder="max" min="800" max="3500" step="100">
+                </div>
+              </div>
+
+              <!-- Sort Order -->
+              <div class="cf-filter-field cf-field-sort">
+                <label for="progress-sort-by" class="cf-filter-label">Sort by:</label>
+                <select id="progress-sort-by" class="cf-select">
+                  <option value="recent-solves">Recent solves first</option>
+                  <option value="date-asc">Oldest solves first</option>
+                  <option value="date-desc">Recently edited first</option>
+                  <option value="rating-desc">Rating: High to Low</option>
+                  <option value="rating-asc">Rating: Low to High</option>
+                  <option value="time-desc">Time: Longest first</option>
+                  <option value="time-asc">Time: Shortest first</option>
+                </select>
+              </div>
+
+              <!-- Pagination size -->
+              <div class="cf-filter-field cf-field-page-size">
+                <label for="progress-page-size" class="cf-filter-label">Per page:</label>
+                <select id="progress-page-size" class="cf-select">
+                  <option value="10">10 reflections</option>
+                  <option value="20">20 reflections</option>
+                  <option value="50">50 reflections</option>
+                  <option value="100">100 reflections</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Filter Footer Bar: Result Count & Actions -->
+            <div class="cf-filter-footer">
+              <div class="cf-filter-count" id="progress-filter-count">
+                Loading reflections…
+              </div>
+              <div class="cf-filter-actions">
+                <button type="button" id="progress-btn-reset" class="btn" title="Reset all filters">Reset</button>
+                <button type="submit" id="progress-btn-apply" class="btn primary">Apply</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Widget 5: Filter Database Problems (Under Your Progress on Manage page) -->
+      <div class="roundbox cf-filter-box hidden" id="manage-filter-sidebar-widget">
+        <div class="caption">Filter Problems</div>
+        <div class="roundbox-body cf-filter-body">
+          <form id="manage-filter-form" class="cf-filter-form" onsubmit="return false;">
+            <div class="cf-sidebar-filter-fields">
+              <!-- Search Problem -->
+              <div class="cf-filter-field">
+                <label for="manage-search-input" class="cf-filter-label">Search problem:</label>
+                <input type="text" id="manage-search-input" class="cf-input" placeholder="Code, title…" autocomplete="off">
+              </div>
+
+              <!-- Time Column Display Toggle -->
+              <div class="cf-filter-field">
+                <label class="cf-filter-label">Time column display:</label>
+                <button type="button" id="btn-toggle-manage-time" class="btn" style="width: 100%; justify-content: center;" title="Hide time spent and show '--' dash instead">Hide Time</button>
+              </div>
+            </div>
+
+            <!-- Stats & Danger Actions -->
+            <div class="cf-filter-footer">
+              <div class="cf-filter-count" id="manage-summary-text">
+                Loading database problems…
+              </div>
+              <div class="cf-filter-actions" style="margin-top: 4px;">
+                <button type="button" id="btn-wipe-all-db" class="btn cf-btn-danger" style="width: 100%; justify-content: center;">Delete All</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Home-only widgets: weak spots -->
+      <div class="roundbox hidden" id="home-weak-reasons-widget">
+        <div class="caption">Stuck reasons</div>
+        <div id="dash-weak-reasons"></div>
+        <div class="roundbox-footer side-note">Top 4 by count. <a href="/stuck-reasons" data-route="stuck-reasons">View all →</a></div>
+      </div>
+      <div class="roundbox hidden" id="home-weak-tags-widget">
+        <div class="caption">Slowest tags</div>
+        <div id="dash-weak-tags"></div>
+        <div class="roundbox-footer side-note">Top 4 by average time (2+ problems). <a href="/tag-times" data-route="tag-times">View all →</a></div>
+      </div>
+    </aside>
+  <!-- Manage Edit Problem Modal -->
+  <div id="manage-edit-modal" class="cf-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="manage-edit-modal-title">
+    <div class="roundbox cf-modal-box">
+      <div class="caption-title" id="manage-edit-modal-title">
+        <span>Edit Problem Time &amp; Date</span>
+        <button type="button" class="cf-modal-close" id="btn-close-manage-edit-modal" title="Close">✕</button>
+      </div>
+      <form id="manage-edit-form">
+        <input type="hidden" id="manage-edit-contest-id" />
+        <input type="hidden" id="manage-edit-index" />
+        <div class="roundbox-body" style="padding: 16px;">
+          <div id="manage-edit-problem-info" style="margin-bottom: 14px; font-size: 14px; font-weight: bold; color: #333333; padding-bottom: 10px; border-bottom: 1px solid #e5e5e5;">
+            <!-- e.g. 1904A — Forked! -->
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #333333;">
+              Time Spent:
+            </label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <input type="number" id="manage-edit-hours" min="0" max="999" class="cf-input" style="width: 65px; padding: 4px 6px; text-align: center;" />
+                <span style="font-size: 12px; color: #666;">h</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <input type="number" id="manage-edit-mins" min="0" max="59" class="cf-input" style="width: 65px; padding: 4px 6px; text-align: center;" />
+                <span style="font-size: 12px; color: #666;">m</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <input type="number" id="manage-edit-secs" min="0" max="59" class="cf-input" style="width: 65px; padding: 4px 6px; text-align: center;" />
+                <span style="font-size: 12px; color: #666;">s</span>
+              </div>
+              <button type="button" id="btn-manage-edit-zero-time" class="cf-dark-btn" style="height: 26px; padding: 0 8px; font-size: 12px; margin-left: 6px;">Reset (0s)</button>
+            </div>
+            <div id="manage-edit-time-preview" style="font-size: 12px; color: #888; margin-top: 4px; font-family: var(--cf-font-monospace);">
+              Duration: 0m
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 6px;">
+            <label for="manage-edit-datetime" style="display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #333333;">
+              Solved At:
+            </label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="datetime-local" id="manage-edit-datetime" class="cf-input" style="flex: 1; padding: 4px 8px; font-family: var(--cf-font-family); font-size: 13px;" />
+              <button type="button" id="btn-manage-edit-now" class="cf-dark-btn" style="height: 28px; padding: 0 8px; font-size: 12px;">Now</button>
+            </div>
+            <div style="font-size: 12px; color: #888; margin-top: 4px;">
+              Date &amp; time when this problem was solved.
+            </div>
+          </div>
+
+          <div id="manage-edit-error" class="message-banner error hidden" style="margin-top: 12px; font-size: 12px;"></div>
+        </div>
+
+        <div class="roundbox-footer action-buttons" style="padding: 10px 16px; display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" id="btn-cancel-manage-edit" class="btn" style="padding: 4px 14px; font-size: 13px;">Cancel</button>
+          <button type="submit" id="btn-save-manage-edit" class="btn cf-btn-primary" style="padding: 4px 14px; font-size: 13px; font-weight: bold;">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/vendor/katex/katex.min.js"></script>
+  <script src="/vendor/prettify/prettify.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

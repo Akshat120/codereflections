@@ -1,0 +1,20 @@
+node_modules/
+.DS_Store
+
+# Local database (your journal) and SQLite side files
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+
+# Secrets and deploy state
+.env
+.env.*
+.vercel/
+
+# Vendor files copied into public/ at build time
+public/vendor/
+
+# Local working copies
+.claude/

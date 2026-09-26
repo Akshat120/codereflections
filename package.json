@@ -1,0 +1,16 @@
+{
+  "name": "cf-problem-reflection",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "code-prettify": "^0.1.0",
+    "express": "^5.1.0",
+    "katex": "^0.16.47"
+  }
+}
