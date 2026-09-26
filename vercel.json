@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "regions": [
@@ -15,11 +16,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index?__path=/api/$1"
     },
     {
       "source": "/health",
-      "destination": "/api/index"
+      "destination": "/api/index?__path=/health"
     },
     {
       "source": "/login",
