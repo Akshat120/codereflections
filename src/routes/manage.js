@@ -12,6 +12,7 @@ import {
   deleteAllQueue,
   updateQueueProblemTimeAndDate
 } from "../repositories/queueRepository.js";
+import { parseContestId, parseProblemIndex } from "../validation.js";
 
 export const manageRoutes = Router();
 
@@ -85,10 +86,10 @@ manageRoutes.get("/problems", async (_req, res) => {
 });
 
 manageRoutes.delete("/problems/:contestId/:index", async (req, res) => {
-  const contestId = Number(req.params.contestId);
-  const index = String(req.params.index).toUpperCase();
+  const contestId = parseContestId(req.params.contestId);
+  const index = parseProblemIndex(req.params.index);
 
-  if (!Number.isInteger(contestId) || !index) {
+  if (!contestId || !index) {
     return res.status(400).json({ error: "Invalid contestId or index." });
   }
 
@@ -127,10 +128,10 @@ manageRoutes.delete("/problems", async (_req, res) => {
 });
 
 const updateProblemHandler = async (req, res) => {
-  const contestId = Number(req.params.contestId);
-  const index = String(req.params.index).toUpperCase();
+  const contestId = parseContestId(req.params.contestId);
+  const index = parseProblemIndex(req.params.index);
 
-  if (!Number.isInteger(contestId) || !index) {
+  if (!contestId || !index) {
     return res.status(400).json({ error: "Invalid contestId or index." });
   }
 
@@ -171,7 +172,7 @@ const updateProblemHandler = async (req, res) => {
       solvedAt: isoDate
     });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to update problem in database: " + err.message });
+    return res.status(500).json({ error: "Failed to update problem in database." });
   }
 };
 

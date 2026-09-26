@@ -59,7 +59,8 @@ export const collections = {
   queue: db.collection("practice_queue"),
   reviewState: db.collection("review_state"),
   reviewLog: db.collection("review_log"),
-  counters: db.collection("counters")
+  counters: db.collection("counters"),
+  loginAttempts: db.collection("login_attempts")
 };
 
 export async function initDb() {
@@ -75,7 +76,9 @@ export async function initDb() {
       { key: { id: 1 }, unique: true }
     ]),
     collections.reviewState.createIndex({ reflectionId: 1 }, { unique: true }),
-    collections.reviewLog.createIndex({ reflectionId: 1 })
+    collections.reviewLog.createIndex({ reflectionId: 1 }),
+    // Failed-login counters delete themselves when their window ends
+    collections.loginAttempts.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
   ]);
   transactionsSupported = await detectTransactionSupport();
 }

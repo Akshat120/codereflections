@@ -87,6 +87,13 @@ Writes that touch several collections (deleting a problem, recording a review, a
 
 How it runs on Vercel: `public/` is served by the CDN (`npm run build` copies KaTeX and Prettify into `public/vendor/`), and every `/api/*` request goes to one serverless function (`api/index.js`) running the same Express app as locally. Warm invocations reuse one MongoDB connection pool.
 
+## Security
+
+- **Login**: set a long, random `APP_PASSWORD`. After 10 wrong passwords from one IP within 15 minutes, that IP is locked out until the window ends (tracked in MongoDB, shared by all serverless instances). Changing the password (or `SESSION_SECRET`) logs out every session.
+- **Local mode**: without `APP_PASSWORD` there is no login, so the dev server listens on `127.0.0.1` only. Set `HOST=0.0.0.0` to expose it (only with a password).
+- **API writes** must be JSON and, when the browser sends an `Origin`, come from the same site; this blocks cross-site form posts (CSRF). Problem data is validated (Codeforces-style ids, `http(s)` URLs only), and the UI escapes everything it renders.
+- **Headers**: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, and a strict referrer policy, from Express and from `vercel.json` for static files.
+
 ## API
 
 ### Get problem metadata

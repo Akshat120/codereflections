@@ -807,7 +807,7 @@ function syncProblemViews() {
       const el = document.getElementById(id);
       if (el) {
         el.textContent = label;
-        el.href = p.url;
+        el.href = safeHref(p.url) === "#" ? "#" : p.url;
       }
     }
     renderReflectionTags(p.tags);
@@ -884,13 +884,13 @@ function renderQueueTable() {
     return `
       <tr class="queue-row ${isActive ? "active-row" : ""}">
         <td class="col-cf-id">
-          <a href="${escapeAttribute(p.url)}" target="_blank" rel="noopener">${p.contestId}${p.index}</a>
+          <a href="${safeHref(p.url)}" target="_blank" rel="noopener">${escapeHtml(`${p.contestId}${p.index}`)}</a>
         </td>
         <td class="col-cf-when">
           ${formatCfTimestamp(p.addedAt)}
         </td>
         <td class="col-cf-problem">
-          <a href="${escapeAttribute(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.index)} - ${escapeHtml(p.name)}</a>
+          <a href="${safeHref(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.index)} - ${escapeHtml(p.name)}</a>
         </td>
         <td class="col-cf-rating ${ratingColorClass(p.rating)}">${p.rating ?? "—"}</td>
         <td class="col-cf-verdict">${verdictHtml}</td>
@@ -898,9 +898,9 @@ function renderQueueTable() {
         <td class="col-cf-action">
           ${isActive
             ? `<span class="cf-badge-active">● Active</span>`
-            : `<button type="button" class="cf-dark-btn btn-solve-now" data-key="${key}">Solve now</button>`
+            : `<button type="button" class="cf-dark-btn btn-solve-now" data-key="${escapeAttribute(key)}">Solve now</button>`
           }
-          <button type="button" class="cf-dark-btn-remove btn-remove-problem" data-key="${key}" title="Remove from queue">✕</button>
+          <button type="button" class="cf-dark-btn-remove btn-remove-problem" data-key="${escapeAttribute(key)}" title="Remove from queue">✕</button>
         </td>
       </tr>
     `;
@@ -1255,7 +1255,7 @@ async function restoreReflection() {
 
     const viewProblemLink = document.getElementById("view-problem-link");
     if (viewProblemLink && state.problem) {
-      viewProblemLink.href = state.problem.url;
+      viewProblemLink.href = safeHref(state.problem.url) === "#" ? "#" : state.problem.url;
       viewProblemLink.textContent = `${state.problem.url} ↗`;
     }
 
@@ -1277,7 +1277,7 @@ function renderProblem() {
   const p = state.problem;
 
   document.getElementById("problem-title").innerHTML =
-    `<a href="${escapeAttribute(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>`;
+    `<a href="${safeHref(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>`;
 
   const rating = document.getElementById("problem-rating");
   rating.textContent = p.rating ?? "Unrated";
@@ -1694,8 +1694,8 @@ function renderReviewCard() {
 
   body.innerHTML = `
     <div class="review-problem">
-      <a href="${escapeAttribute(r.problemUrl)}" target="_blank" rel="noopener">${problemCode(r)}</a>
-      <a href="${escapeAttribute(r.problemUrl)}" target="_blank" rel="noopener" class="review-problem-name">${escapeHtml(r.problemName)}</a>
+      <a href="${safeHref(r.problemUrl)}" target="_blank" rel="noopener">${problemCode(r)}</a>
+      <a href="${safeHref(r.problemUrl)}" target="_blank" rel="noopener" class="review-problem-name">${escapeHtml(r.problemName)}</a>
       <span class="${ratingColorClass(r.rating)}">${r.rating ?? "—"}</span>
     </div>
     <div class="dash-muted review-meta">Solved ${formatSavedDate(r.createdAt || r.updatedAt)} · ${history}</div>
@@ -1892,7 +1892,7 @@ async function loadStuckReasons() {
 }
 
 function problemCode(item) {
-  return `${item.contestId}${item.problemIndex}`;
+  return escapeHtml(`${item.contestId}${item.problemIndex}`);
 }
 
 function solvedAtOf(item) {
@@ -1908,7 +1908,7 @@ function renderWeakSpotsPage(items) {
 
   const codesHtml = problems => problems
     .sort((a, b) => solvedAtOf(b) - solvedAtOf(a))
-    .map(item => `<a href="${escapeAttribute(item.problemUrl)}" target="_blank" rel="noopener">${problemCode(item)}</a>`)
+    .map(item => `<a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener">${problemCode(item)}</a>`)
     .join(", ");
 
   // Stuck reasons: every reason from the catalogue, grouped, with its problems
@@ -2026,7 +2026,7 @@ function renderDashboard(items) {
         <tbody>
           ${recent.map(item => `
             <tr>
-              <td class="dash-col-code"><a href="${escapeAttribute(item.problemUrl)}" target="_blank" rel="noopener">${problemCode(item)}</a></td>
+              <td class="dash-col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener">${problemCode(item)}</a></td>
               <td>
                 <div class="dash-recent-head">
                   <a href="/edit-reflection?id=${item.id}" data-route="edit-reflection">${escapeHtml(item.problemName)}</a>
@@ -2128,7 +2128,7 @@ function buildJournalTable(items, { compact = false } = {}) {
       <tbody>
         ${items.map(item => `
           <tr class="journal-row" data-id="${item.id}" title="Click to view reflection notes">
-            <td class="col-code"><a href="${escapeAttribute(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${item.contestId}${item.problemIndex}</a></td>
+            <td class="col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}</a></td>
             <td class="col-rating ${ratingColorClass(item.rating)}" style="text-align: center;">${item.rating ?? "—"}</td>
             <td>
               <b>${escapeHtml(item.problemName)}</b>
@@ -2865,6 +2865,12 @@ function escapeAttribute(value) {
   return escapeHtml(value);
 }
 
+// href for a stored URL: only http(s) links are clickable, so a crafted
+// "javascript:" URL can never run
+function safeHref(url) {
+  return /^https?:\/\//i.test(String(url ?? "")) ? escapeAttribute(url) : "#";
+}
+
 // ==========================================================================
 // Markdown Rendering & Editor Controls
 // ==========================================================================
@@ -2960,7 +2966,7 @@ function renderMarkdown(text) {
 
   // 10. Links: [label](url)
   src = src.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, label, url) => {
-    return `<a href="${escapeAttribute(url)}" target="_blank" rel="noopener" class="md-link">${label}</a>`;
+    return `<a href="${safeHref(url)}" target="_blank" rel="noopener" class="md-link">${label}</a>`;
   });
 
   // 11. Inline styles: Bold, Italic, Strikethrough, Superscripts, Subscripts
@@ -3287,7 +3293,7 @@ function populateEditReflectionForm(item) {
 
   const linkEl = document.getElementById("edit-problem-link");
   if (linkEl) {
-    linkEl.href = item.problemUrl;
+    linkEl.href = safeHref(item.problemUrl) === "#" ? "#" : item.problemUrl;
     linkEl.textContent = `${item.problemUrl} ↗`;
   }
 
@@ -3475,12 +3481,12 @@ function renderManageTableRows(problems) {
     const isHidden = isProblemTimeHidden(p.contestId, p.index);
     const solvedDate = p.solvedAt || (p.inJournal ? (p.createdAt || p.updatedAt) : null);
     return `
-    <tr data-key="${p.contestId}_${p.index}">
+    <tr data-key="${escapeAttribute(`${p.contestId}_${p.index}`)}">
       <td style="text-align: center;">
-        <a href="${escapeAttribute(p.url)}" target="_blank" rel="noopener">${p.contestId}${p.index}</a>
+        <a href="${safeHref(p.url)}" target="_blank" rel="noopener">${escapeHtml(`${p.contestId}${p.index}`)}</a>
       </td>
       <td style="text-align: left;">
-        <a href="${escapeAttribute(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>
+        <a href="${safeHref(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>
       </td>
       <td class="${ratingColorClass(p.rating)}" style="text-align: center; font-weight: bold;">
         <b>${p.rating ?? "—"}</b>
@@ -3492,7 +3498,7 @@ function renderManageTableRows(problems) {
         ${formatSolvedAtDate(solvedDate)}
       </td>
       <td class="col-row-actions">
-        ${p.journalId ? `<a class="cf-row-action" href="/edit-reflection?id=${p.journalId}" data-route="edit-reflection" title="Edit the written reflection">Edit reflection</a> ` : ""}<button type="button" class="cf-row-action btn-edit-db-problem" data-contest="${p.contestId}" data-index="${p.index}" title="Edit time spent and date for this problem">Edit time</button> <button type="button" class="cf-row-action btn-toggle-problem-time ${isHidden ? "is-hidden" : ""}" data-contest="${p.contestId}" data-index="${p.index}" title="${isHidden ? "Show time for this problem" : "Hide time for this problem everywhere"}">${isHidden ? "Show time" : "Hide time"}</button> <button type="button" class="cf-row-action is-danger btn-delete-db-problem" data-contest="${p.contestId}" data-index="${p.index}" data-name="${escapeHtml(p.name)}" title="Permanently delete this problem">Delete</button>
+        ${p.journalId ? `<a class="cf-row-action" href="/edit-reflection?id=${encodeURIComponent(p.journalId)}" data-route="edit-reflection" title="Edit the written reflection">Edit reflection</a> ` : ""}<button type="button" class="cf-row-action btn-edit-db-problem" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" title="Edit time spent and date for this problem">Edit time</button> <button type="button" class="cf-row-action btn-toggle-problem-time ${isHidden ? "is-hidden" : ""}" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" title="${isHidden ? "Show time for this problem" : "Hide time for this problem everywhere"}">${isHidden ? "Show time" : "Hide time"}</button> <button type="button" class="cf-row-action is-danger btn-delete-db-problem" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" data-name="${escapeHtml(p.name)}" title="Permanently delete this problem">Delete</button>
       </td>
     </tr>
   `;
