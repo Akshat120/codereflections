@@ -66,7 +66,12 @@ Writes that touch several collections (deleting a problem, recording a review, a
    # from Turso instead of the local file:
    SOURCE_DATABASE_URL="libsql://..." SOURCE_AUTH_TOKEN="..." MONGODB_URI="mongodb+srv://..." npm run migrate:mongo
    ```
-   It refuses to write into a database that already has data; add `--force` to replace it.
+   Or from a CSV export of the tables (one file per table, named `…reflections.csv`, `…practice_queue.csv`, `…review_state.csv`, `…review_log.csv`):
+   ```bash
+   MONGODB_URI="mongodb+srv://..." npm run import:csv -- --dry-run exports/*.csv   # check the files only
+   MONGODB_URI="mongodb+srv://..." npm run import:csv -- exports/*.csv
+   ```
+   Both refuse to write into a database that already has data; add `--force` to replace it.
 3. **Deploy**: import the repository in Vercel (framework preset "Other"; `vercel.json` sets the build) and add these environment variables:
    - `MONGODB_URI`: from step 1 (and `MONGODB_DB` if you don't use the default name)
    - `APP_PASSWORD`: the password you'll log in with (the API refuses to run on Vercel without it)

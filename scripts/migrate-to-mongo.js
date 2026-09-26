@@ -17,7 +17,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { client, collections, initDb, withTransaction } from "../src/db/database.js";
+import { client, collections, initDb } from "../src/db/database.js";
+import { TABLES, writeJournal } from "./lib/journal.js";
 
 const force = process.argv.includes("--force");
 
@@ -34,83 +35,6 @@ if (sourceUrl.startsWith("file:") && !fs.existsSync(sourceUrl.slice("file:".leng
 
 const source = createClient({ url: sourceUrl, authToken: process.env.SOURCE_AUTH_TOKEN });
 
-function parseTags(json) {
-  try {
-    const tags = JSON.parse(json || "[]");
-    return Array.isArray(tags) ? tags.map(String) : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-const nullableNumber = value => (value == null ? null : Number(value));
-
-// Each source table, its target collection and how a row becomes a document
-const TABLES = [
-  {
-    table: "reflections",
-    collection: collections.reflections,
-    counter: "reflections",
-    toDoc: row => ({
-      id: Number(row.id),
-      contestId: Number(row.contest_id),
-      problemIndex: row.problem_index,
-      problemName: row.problem_name,
-      rating: nullableNumber(row.rating),
-      tags: parseTags(row.tags_json),
-      problemUrl: row.problem_url,
-      timeSpentSeconds: Number(row.time_spent_seconds) || 0,
-      keyObservation: row.key_observation,
-      whatMadeMeStuck: row.what_made_me_stuck,
-      stuckReason: row.stuck_reason ?? null,
-      pattern: row.pattern,
-      futureTrigger: row.future_trigger,
-      simplestImplementation: row.simplest_implementation,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    })
-  },
-  {
-    table: "practice_queue",
-    collection: collections.queue,
-    counter: "practice_queue",
-    toDoc: row => ({
-      id: Number(row.id),
-      contestId: Number(row.contest_id),
-      index: row.problem_index,
-      name: row.problem_name,
-      rating: nullableNumber(row.rating),
-      tags: parseTags(row.tags_json),
-      url: row.problem_url,
-      timeSpentSeconds: Number(row.time_spent_seconds) || 0,
-      timerRunning: Boolean(Number(row.timer_running)),
-      status: row.status,
-      addedAt: row.added_at
-    })
-  },
-  {
-    table: "review_state",
-    collection: collections.reviewState,
-    toDoc: row => ({
-      reflectionId: Number(row.reflection_id),
-      stage: Number(row.stage),
-      dueAt: row.due_at,
-      lastReviewedAt: row.last_reviewed_at ?? null,
-      reviews: Number(row.reviews),
-      lapses: Number(row.lapses)
-    })
-  },
-  {
-    table: "review_log",
-    collection: collections.reviewLog,
-    toDoc: row => ({
-      reflectionId: Number(row.reflection_id),
-      grade: row.grade,
-      reviewedAt: row.reviewed_at
-    })
-  }
-];
-
 async function tableExists(table) {
   const result = await source.execute({
     sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -126,14 +50,6 @@ async function main() {
   // Connects and creates the collections' indexes (no data yet)
   await initDb();
 
-  const targetCounts = {};
-  for (const { table, collection } of TABLES) targetCounts[table] = await collection.countDocuments();
-  if (Object.values(targetCounts).some(n => n > 0) && !force) {
-    console.error("Target already has data:", targetCounts);
-    console.error("Nothing copied. Re-run with --force to replace it with the source journal.");
-    process.exit(1);
-  }
-
   const docs = {};
   for (const { table, toDoc } of TABLES) {
     docs[table] = (await tableExists(table))
@@ -142,34 +58,12 @@ async function main() {
   }
   if (docs.reflections.length === 0) {
     console.error("The source has no reflections; refusing to copy an empty journal.");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
-  await withTransaction(async session => {
-    for (const { table, collection, counter } of TABLES) {
-      if (force) await collection.deleteMany({}, { session });
-      if (docs[table].length) await collection.insertMany(docs[table], { session });
-      if (counter) {
-        // New ids continue after the copied ones
-        const maxId = Math.max(0, ...docs[table].map(doc => doc.id));
-        await collections.counters.updateOne(
-          { _id: counter },
-          { $max: { seq: maxId } },
-          { upsert: true, session }
-        );
-      }
-    }
-  });
-
-  let ok = true;
-  for (const { table, collection } of TABLES) {
-    const copied = await collection.countDocuments();
-    const match = copied === docs[table].length;
-    ok = ok && match;
-    console.log(`${match ? "ok " : "MISMATCH"} ${table}: ${copied} of ${docs[table].length} rows`);
-  }
-  if (!ok) process.exitCode = 1;
-  else console.log("Done. Your journal is in MongoDB.");
+  if (await writeJournal(docs, { force })) console.log("Done. Your journal is in MongoDB.");
+  else process.exitCode = 1;
 }
 
 main()
