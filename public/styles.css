@@ -4205,3 +4205,309 @@ pre.prettyprint.cf-source {
 [data-theme="dark"] .header-logout {
   color: #58a6ff;
 }
+
+/* ==========================================================================
+   Landing page (login.html): what the app is, how it works, why it exists,
+   with the owner's login in the sidebar
+   ========================================================================== */
+.landing {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 12px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 73fr) minmax(250px, 27fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.landing-hero {
+  padding: 26px 22px 22px;
+}
+
+.landing-hero h1 {
+  margin: 0 0 10px;
+  font-family: var(--cf-font-typography);
+  font-size: 30px;
+  line-height: 1.2;
+  color: #111;
+}
+
+.landing-hero h1 em {
+  font-style: normal;
+  color: var(--cf-accent);
+}
+
+.landing-lead {
+  margin: 0 0 16px;
+  max-width: 640px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn.landing-cta {
+  background: var(--cf-accent);
+  border-color: var(--cf-accent-dark);
+  color: #fff;
+}
+
+.btn.landing-cta:hover {
+  background: var(--cf-accent-hover);
+  color: #fff;
+}
+
+.landing-body {
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #222;
+}
+
+.landing-body p {
+  margin: 0 0 10px;
+}
+
+.landing-body p:last-child {
+  margin-bottom: 0;
+}
+
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-steps li {
+  padding: 12px;
+  border: 1px solid #e1e1e1;
+  border-radius: 6px;
+  background: #fafbfc;
+}
+
+.landing-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--cf-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.landing-steps h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--cf-accent);
+}
+
+.landing-steps p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #444;
+}
+
+.landing-questions {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.landing-questions > div {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--cf-accent);
+  border-radius: 0 4px 4px 0;
+  background: #f6f8fa;
+}
+
+.landing-questions dt {
+  font-weight: bold;
+  color: #111;
+}
+
+.landing-questions dd,
+.landing-example dd {
+  margin: 0;
+  color: #444;
+}
+
+.landing-example {
+  overflow: hidden;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+}
+
+.landing-example-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #d0d7de;
+  background: #f6f8fa;
+  font-size: 13px;
+}
+
+.landing-example-head a {
+  font-weight: bold;
+}
+
+.landing-example dl {
+  margin: 0;
+}
+
+.landing-example dl > div {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
+
+.landing-example dl > div:last-child {
+  border-bottom: 0;
+}
+
+.landing-example dt {
+  font-weight: bold;
+  color: #555;
+}
+
+.landing-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 11px;
+  color: #555;
+}
+
+.landing-quote {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 3px solid #d4a72c;
+  background: #fffbea;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #333;
+}
+
+.landing-quote cite {
+  display: block;
+  margin-top: 8px;
+  font-style: normal;
+  font-size: 13px;
+  color: #666;
+}
+
+.landing-side-body {
+  padding: 12px;
+}
+
+.landing-note {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.landing-note-last {
+  margin: 8px 0 0;
+}
+
+.landing-list {
+  margin: 0;
+  padding: 0 0 0 16px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* Phones and tablets: one column, the introduction first; "Owner log in" at
+   the top jumps down to the form */
+@media (max-width: 860px) {
+  .landing {
+    grid-template-columns: 1fr;
+  }
+  .landing-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+  .landing-questions > div,
+  .landing-example dl > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .landing-hero h1 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+[data-theme="dark"] .landing-hero h1 { color: #e6edf3; }
+[data-theme="dark"] .landing-hero h1 em,
+[data-theme="dark"] .landing-steps h3 { color: #58a6ff; }
+[data-theme="dark"] .landing-lead,
+[data-theme="dark"] .landing-body { color: #c9d1d9; }
+[data-theme="dark"] .landing-steps li {
+  border-color: #383c40;
+  background: #1f2226;
+}
+[data-theme="dark"] .landing-steps p,
+[data-theme="dark"] .landing-questions dd,
+[data-theme="dark"] .landing-example dd { color: #b1bac4; }
+[data-theme="dark"] .landing-questions > div { background: #1f2226; border-left-color: #58a6ff; }
+[data-theme="dark"] .landing-questions dt { color: #e6edf3; }
+[data-theme="dark"] .landing-example { border-color: #383c40; }
+[data-theme="dark"] .landing-example-head {
+  border-bottom-color: #383c40;
+  background: #1f2226;
+}
+[data-theme="dark"] .landing-example dl > div { border-bottom-color: #2d3136; }
+[data-theme="dark"] .landing-example dt { color: #8b949e; }
+[data-theme="dark"] .landing-tag {
+  border-color: #44494f;
+  background: #24272a;
+  color: #b1bac4;
+}
+[data-theme="dark"] .landing-quote {
+  background: #2a2616;
+  color: #d9d4c3;
+}
+[data-theme="dark"] .landing-quote cite,
+[data-theme="dark"] .landing-note { color: #8b949e; }
+[data-theme="dark"] .landing-step-num {
+  background: #1f6feb;
+  color: #fff;
+}
+/* the dark theme's .btn rule uses !important, so the call to action must too */
+[data-theme="dark"] .btn.landing-cta {
+  background-color: #1f6feb !important;
+  border-color: #1f6feb !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .btn.landing-cta:hover {
+  background-color: #388bfd !important;
+  border-color: #388bfd !important;
+}
+
