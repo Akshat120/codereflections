@@ -363,13 +363,9 @@ a:hover {
   text-decoration: none;
 }
 
-/* Database round trip: a Wi-Fi style signal with the latency under it.
-   Arcs light up by speed (3 = fast, 2 = fair, 1 = slow); a click measures
-   again. */
-.site-footer-links {
-  align-items: center;
-}
-
+/* Database round trip (top right of the header): a Wi-Fi style signal with
+   the latency under it. Arcs light up by speed (3 = fast, 2 = fair,
+   1 = slow); a click measures again. */
 .db-latency {
   display: inline-flex;
   flex-direction: column;
@@ -440,6 +436,25 @@ a:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .db-latency.is-measuring .db-latency-icon { animation: none; }
+}
+
+/* The header's right side (signal, theme button, Log out) stays on one line;
+   when it doesn't fit next to the brand it moves under it, right-aligned. On
+   very narrow phones the theme button keeps just its icon (it still has its
+   label for screen readers and its tooltip). */
+.header-top {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.header-right {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  margin-left: auto;
+}
+@media (max-width: 380px) {
+  .cf-theme-toggle-btn .theme-text {
+    display: none;
+  }
 }
 
 [data-theme="dark"] .wifi-arc { stroke: #3d444b; }

@@ -4021,7 +4021,7 @@ function initTheme() {
   });
 }
 
-// Footer signal: round trip between the app server and MongoDB (measured on the
+// Header signal (top right): round trip between the app server and MongoDB (measured on the
 // server), with the full page -> server -> database time in its tooltip.
 // Measured after the page loads, every minute while the tab is visible, and
 // on click.
