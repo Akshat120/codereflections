@@ -162,7 +162,7 @@ async function main() {
   }
 
   console.log(`Target: MongoDB database "${collections.reflections.dbName}"`);
-  await initDb();
+  await initDb({ waitForIndexes: true });
   if (await writeJournal(docs, { force })) console.log("Done. Your journal is in MongoDB.");
   else process.exitCode = 1;
 }

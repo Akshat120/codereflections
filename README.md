@@ -83,7 +83,7 @@ Writes that touch several collections (deleting a problem, recording a review, a
    - `APP_PASSWORD`: the password you'll log in with (the API refuses to run on Vercel without it)
 4. Open the site, log in, done.
 
-`vercel.json` runs the API in Vercel's Dublin region (`dub1`); create the Atlas cluster in a nearby region (e.g. AWS `eu-west-1`, Ireland) or change `regions`.
+`vercel.json` runs the API in Vercel's Dublin region (`dub1`). **Put the Atlas cluster in the same place** (AWS `eu-west-1`, Ireland), or change `regions` to the Vercel region closest to your cluster (e.g. `bom1` for AWS Mumbai `ap-south-1`, `iad1` for AWS `us-east-1`): every database query is a round trip between the two, so the distance adds to each page load.
 
 How it runs on Vercel: `public/` is served by the CDN (`npm run build` copies KaTeX and Prettify into `public/vendor/`), and every `/api/*` request goes to one serverless function (`api/index.js`) running the same Express app as locally. Warm invocations reuse one MongoDB connection pool.
 
