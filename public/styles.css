@@ -3904,6 +3904,46 @@ kbd {
   background: transparent;
   padding: 10px 14px;
 }
+
+/* A long code line must scroll inside its box, not widen the page: in a
+   table (Progress details, Review) the code otherwise sets the table's minimum
+   width and the panel around it clips the rest. width: 0 with min-width: 100%
+   takes the space available without asking for the code's full width. */
+.spoiler-code-content {
+  width: 0;
+  min-width: 100%;
+}
+.spoiler-code-content .md-code-wrapper {
+  max-width: 100%;
+}
+
+/* Visible horizontal scrollbar under code listings */
+pre.prettyprint.cf-source {
+  scrollbar-width: thin;
+  scrollbar-color: #9aa3ad transparent;
+}
+pre.prettyprint.cf-source::-webkit-scrollbar {
+  height: 8px;
+}
+pre.prettyprint.cf-source::-webkit-scrollbar-track {
+  background: #f1f3f5;
+}
+pre.prettyprint.cf-source::-webkit-scrollbar-thumb {
+  background: #9aa3ad;
+  border-radius: 4px;
+}
+pre.prettyprint.cf-source::-webkit-scrollbar-thumb:hover {
+  background: #6e7781;
+}
+[data-theme="dark"] pre.prettyprint.cf-source {
+  scrollbar-color: #5c636a transparent;
+}
+[data-theme="dark"] pre.prettyprint.cf-source::-webkit-scrollbar-track {
+  background: #24272a;
+}
+[data-theme="dark"] pre.prettyprint.cf-source::-webkit-scrollbar-thumb {
+  background: #5c636a;
+}
 pre.prettyprint.cf-source {
   margin: 0;
   padding: 6px 8px;
