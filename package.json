@@ -9,7 +9,8 @@
     "build": "node scripts/copy-vendor.js",
     "migrate:mongo": "node scripts/migrate-to-mongo.js",
     "import:csv": "node scripts/import-csv.js",
-    "copy:cluster": "node scripts/copy-cluster.js"
+    "copy:cluster": "node scripts/copy-cluster.js",
+    "hash-password": "node scripts/hash-password.js"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
