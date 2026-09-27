@@ -87,6 +87,18 @@ Writes that touch several collections (deleting a problem, recording a review, a
 
 How it runs on Vercel: `public/` is served by the CDN (`npm run build` copies KaTeX and Prettify into `public/vendor/`), and every `/api/*` request goes to one serverless function (`api/index.js`) running the same Express app as locally. Warm invocations reuse one MongoDB connection pool.
 
+## Move the database to another cluster
+
+Free (M0) Atlas clusters can't change region, so moving one means creating a new cluster and copying the data. `npm run copy:cluster` does that with the app's own driver (no MongoDB tools to install): every collection with its documents (ids and types kept) and indexes, a backup file first, and a count check at the end.
+
+1. In Atlas, create the new cluster, a database user, and allow `0.0.0.0/0` in **Network Access**.
+2. Copy: run `npm run copy:cluster` and paste the old cluster's connection string, then the new one's, when asked (Atlas: **Connect → Drivers**; replace `<db_password>` with the real password). Pasting avoids the shell's quoting rules; the strings can also come from `SOURCE_MONGODB_URI` and `TARGET_MONGODB_URI`.
+
+   It refuses to write into a target that already has data; add `--force` to replace it. `MONGODB_DB` picks the database (default `codereflections`).
+3. In Vercel, set `MONGODB_URI` to the new cluster and redeploy. Once it works, delete the old cluster.
+
+Only a backup: `npm run copy:cluster -- --backup-only` (saved in `backups/`, which git ignores: it's your whole journal). Push a backup to a cluster: `npm run copy:cluster -- --restore backups/<file>.json`.
+
 ## Security
 
 - **Login**: set a long, random `APP_PASSWORD`. After 10 wrong passwords from one IP within 15 minutes, that IP is locked out until the window ends (tracked in MongoDB, shared by all serverless instances). Changing the password (or `SESSION_SECRET`) logs out every session.

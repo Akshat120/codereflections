@@ -18,3 +18,6 @@ public/vendor/
 
 # Local working copies
 .claude/
+
+# Database backups made by scripts/copy-cluster.js (your whole journal)
+backups/
