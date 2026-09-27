@@ -92,16 +92,12 @@ How it runs on Vercel: `public/` is served by the CDN (`npm run build` copies Ka
 Free (M0) Atlas clusters can't change region, so moving one means creating a new cluster and copying the data. `npm run copy:cluster` does that with the app's own driver (no MongoDB tools to install): every collection with its documents (ids and types kept) and indexes, a backup file first, and a count check at the end.
 
 1. In Atlas, create the new cluster, a database user, and allow `0.0.0.0/0` in **Network Access**.
-2. Copy:
-   ```bash
-   SOURCE_MONGODB_URI="mongodb+srv://USER:PASS@old-cluster..." \
-   TARGET_MONGODB_URI="mongodb+srv://USER:PASS@new-cluster..." \
-   npm run copy:cluster
-   ```
+2. Copy: run `npm run copy:cluster` and paste the old cluster's connection string, then the new one's, when asked (Atlas: **Connect → Drivers**; replace `<db_password>` with the real password). Pasting avoids the shell's quoting rules; the strings can also come from `SOURCE_MONGODB_URI` and `TARGET_MONGODB_URI`.
+
    It refuses to write into a target that already has data; add `--force` to replace it. `MONGODB_DB` picks the database (default `codereflections`).
 3. In Vercel, set `MONGODB_URI` to the new cluster and redeploy. Once it works, delete the old cluster.
 
-Only a backup: `SOURCE_MONGODB_URI=... npm run copy:cluster -- --backup-only` (saved in `backups/`, which git ignores: it's your whole journal). Push a backup to a cluster: `TARGET_MONGODB_URI=... npm run copy:cluster -- --restore backups/<file>.json`.
+Only a backup: `npm run copy:cluster -- --backup-only` (saved in `backups/`, which git ignores: it's your whole journal). Push a backup to a cluster: `npm run copy:cluster -- --restore backups/<file>.json`.
 
 ## Security
 

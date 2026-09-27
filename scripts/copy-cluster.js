@@ -2,15 +2,17 @@
 // move a free Atlas cluster to a new region (free clusters can't change
 // region in place). Uses the app's own MongoDB driver: nothing else to install.
 //
-//   Copy (also saves a backup file first):
-//     SOURCE_MONGODB_URI="mongodb+srv://...old..." \
-//     TARGET_MONGODB_URI="mongodb+srv://...new..." npm run copy:cluster
+//   Copy (also saves a backup file first); it asks for the two connection
+//   strings, so just paste them when prompted:
+//     npm run copy:cluster
 //
 //   Only download a backup file:
-//     SOURCE_MONGODB_URI="..." npm run copy:cluster -- --backup-only
+//     npm run copy:cluster -- --backup-only
 //
 //   Push a backup file to a cluster:
-//     TARGET_MONGODB_URI="..." npm run copy:cluster -- --restore backups/<file>.json
+//     npm run copy:cluster -- --restore backups/<file>.json
+//
+// The strings can also come from SOURCE_MONGODB_URI / TARGET_MONGODB_URI.
 //
 // Options: --force replaces data already in the target (otherwise it refuses).
 // MONGODB_DB picks the database (default "codereflections"); TARGET_MONGODB_DB
@@ -31,14 +33,69 @@ const backupOnly = args.includes("--backup-only");
 const restoreIndex = args.indexOf("--restore");
 const restoreFile = restoreIndex >= 0 ? args[restoreIndex + 1] : null;
 
-const sourceUri = (process.env.SOURCE_MONGODB_URI || "").trim();
-const targetUri = (process.env.TARGET_MONGODB_URI || "").trim();
+let sourceUri = cleanUri(process.env.SOURCE_MONGODB_URI);
+let targetUri = cleanUri(process.env.TARGET_MONGODB_URI);
 const sourceDbName = process.env.MONGODB_DB || "codereflections";
 const targetDbName = process.env.TARGET_MONGODB_DB || sourceDbName;
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const backupDir = path.join(root, "backups");
 const BATCH = 1000;
+
+// Forgives the usual paste slips around a connection string: whitespace,
+// straight or curly quotes, and <angle brackets> around the whole thing
+function cleanUri(value) {
+  let uri = String(value ?? "").trim();
+  for (let i = 0; i < 3; i++) {
+    const unwrapped = uri.replace(/^(["'‘’“”<])(.*)(["'‘’“”>])$/s, "$2").trim();
+    if (unwrapped === uri) break;
+    uri = unwrapped;
+  }
+  return uri;
+}
+
+function checkUri(uri, label) {
+  if (!/^mongodb(\+srv)?:\/\//.test(uri)) {
+    fail(`The ${label} connection string must start with mongodb+srv:// (or mongodb://).`);
+  }
+  if (/<[^>]*>/.test(uri)) {
+    fail(`The ${label} connection string still has a placeholder like <db_password>: ` +
+      "replace it, brackets included, with the real value.");
+  }
+  if (/\s/.test(uri)) fail(`The ${label} connection string contains a space; copy it again from Atlas.`);
+}
+
+// Asks for a connection string on the terminal (pasting avoids the shell's
+// quoting rules entirely)
+// One reader for all questions. Lines are queued as they arrive, so when
+// several are pasted (or piped) at once none is lost; a closed input answers "".
+let prompt = null;
+const pendingLines = [];
+const waiting = [];
+let inputClosed = false;
+
+async function ask(question) {
+  if (!prompt) {
+    const { createInterface } = await import("node:readline");
+    prompt = createInterface({ input: process.stdin, terminal: false });
+    prompt.on("line", line => (waiting.length ? waiting.shift()(line) : pendingLines.push(line)));
+    prompt.on("close", () => {
+      inputClosed = true;
+      while (waiting.length) waiting.shift()("");
+    });
+  }
+  process.stdout.write(question);
+  const line = pendingLines.length
+    ? pendingLines.shift()
+    : inputClosed ? "" : await new Promise(resolve => waiting.push(resolve));
+  if (!process.stdin.isTTY) process.stdout.write("\n");
+  return cleanUri(line);
+}
+
+function closePrompt() {
+  prompt?.close();
+  prompt = null;
+}
 
 // Shown instead of a URI, so passwords never reach the terminal
 function describe(uri) {
@@ -139,8 +196,17 @@ async function main() {
   if (restoreIndex >= 0 && !restoreFile) fail("--restore needs a backup file: --restore backups/<file>.json");
   const needsSource = !restoreFile;
   const needsTarget = !backupOnly;
-  if (needsSource && !sourceUri) fail("Set SOURCE_MONGODB_URI to the cluster to copy from.");
-  if (needsTarget && !targetUri) fail("Set TARGET_MONGODB_URI to the cluster to copy to.");
+  if (needsSource && !sourceUri) {
+    sourceUri = await ask("Paste the OLD cluster's connection string (copy FROM): ");
+    if (!sourceUri) fail("Set SOURCE_MONGODB_URI to the cluster to copy from.");
+  }
+  if (needsTarget && !targetUri) {
+    targetUri = await ask("Paste the NEW cluster's connection string (copy TO): ");
+    if (!targetUri) fail("Set TARGET_MONGODB_URI to the cluster to copy to.");
+  }
+  closePrompt();
+  if (needsSource) checkUri(sourceUri, "source (old cluster)");
+  if (needsTarget) checkUri(targetUri, "target (new cluster)");
   if (needsSource && needsTarget && sourceUri === targetUri && sourceDbName === targetDbName) {
     fail("Source and target are the same database.");
   }
