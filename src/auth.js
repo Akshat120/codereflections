@@ -1,29 +1,59 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { blockedMinutes, clearFailures, clientIp, recordFailure } from "./loginLimiter.js";
+import { parseHash, verifyPassword } from "./passwordHash.js";
 
-// Single-user password login. Set APP_PASSWORD to enable it (always required on
-// Vercel). A successful login sets a signed, HttpOnly session cookie.
+// Single-user password login (always required on Vercel). A successful login
+// sets a signed, HttpOnly session cookie.
+//
+// The password is set with APP_PASSWORD_HASH: an scrypt hash made by
+// `npm run hash-password`, so the password itself is stored nowhere.
+// APP_PASSWORD (the password in plain text) still works when no hash is set.
 const COOKIE_NAME = "cr_session";
 const SESSION_DAYS = 30;
 
-function password() {
+function passwordHash() {
+  return (process.env.APP_PASSWORD_HASH || "").trim();
+}
+
+function plainPassword() {
   return process.env.APP_PASSWORD || "";
 }
 
 export function authEnabled() {
-  return Boolean(password());
+  return Boolean(passwordHash() || plainPassword());
 }
 
-// On Vercel the API refuses to run without a password rather than exposing data.
-function authMisconfigured() {
-  return Boolean(process.env.VERCEL) && !authEnabled();
+// Why login can't work, or null. On Vercel the API refuses to run without a
+// password rather than exposing data; a malformed hash locks everyone out
+// with a clear message instead of silently accepting nothing.
+function authConfigError() {
+  if (passwordHash() && !parseHash(passwordHash())) {
+    return "APP_PASSWORD_HASH is not a valid hash. Generate one with: npm run hash-password";
+  }
+  if (process.env.VERCEL && !authEnabled()) {
+    return "No password is set on the server (APP_PASSWORD_HASH).";
+  }
+  return null;
 }
 
-// Signing key: SESSION_SECRET if given, otherwise derived from the password, so
-// changing the password logs out every existing session.
+// Signing key: SESSION_SECRET if given, otherwise derived from the stored
+// hash (random salt + scrypt output, so a captured cookie can't be used to
+// guess the password offline) or, without a hash, from the plain password.
+// Changing the password therefore logs out every existing session.
 function signingKey() {
-  return process.env.SESSION_SECRET || crypto.createHash("sha256").update(`cr-session:${password()}`).digest("hex");
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  const basis = passwordHash() || plainPassword();
+  return crypto.createHash("sha256").update(`cr-session:${basis}`).digest("hex");
+}
+
+async function passwordMatches(given) {
+  if (passwordHash()) return verifyPassword(given, passwordHash());
+  // Plain APP_PASSWORD: compare fixed-length digests so timing doesn't
+  // reveal the password's length
+  const a = crypto.createHash("sha256").update(given).digest("hex");
+  const b = crypto.createHash("sha256").update(plainPassword()).digest("hex");
+  return safeEqual(a, b);
 }
 
 function sign(value) {
@@ -85,9 +115,8 @@ authRoutes.get("/session", (req, res) => {
 });
 
 authRoutes.post("/login", async (req, res) => {
-  if (authMisconfigured()) {
-    return res.status(503).json({ error: "APP_PASSWORD is not set on the server." });
-  }
+  const configError = authConfigError();
+  if (configError) return res.status(503).json({ error: configError });
   if (!authEnabled()) {
     return res.json({ ok: true });
   }
@@ -99,10 +128,8 @@ authRoutes.post("/login", async (req, res) => {
     return res.status(429).json({ error: `Too many wrong passwords. Try again in ${wait} minute${wait === 1 ? "" : "s"}.` });
   }
 
-  // Compare fixed-length hashes so timing doesn't reveal the password length
-  const given = crypto.createHash("sha256").update(String(req.body?.password || "")).digest("hex");
-  const expected = crypto.createHash("sha256").update(password()).digest("hex");
-  if (!safeEqual(given, expected)) {
+  const given = req.body?.password;
+  if (typeof given !== "string" || given.length > 1024 || !(await passwordMatches(given))) {
     await recordFailure(ip);
     await new Promise(resolve => setTimeout(resolve, 600)); // slow down guessing
     return res.status(401).json({ error: "Wrong password." });
@@ -121,9 +148,8 @@ authRoutes.post("/logout", (req, res) => {
 
 // Guards every other /api route
 export function requireAuth(req, res, next) {
-  if (authMisconfigured()) {
-    return res.status(503).json({ error: "APP_PASSWORD is not set on the server." });
-  }
+  const configError = authConfigError();
+  if (configError) return res.status(503).json({ error: configError });
   if (!isLoggedIn(req)) {
     return res.status(401).json({ error: "Please log in." });
   }

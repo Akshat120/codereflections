@@ -48,8 +48,9 @@ Optional environment variables:
 |---|---|
 | `MONGODB_URI` | MongoDB connection string (default `mongodb://127.0.0.1:27017`; required on Vercel) |
 | `MONGODB_DB` | Database name (default `codereflections`) |
-| `APP_PASSWORD` | Require this password to use the app (always required on Vercel) |
-| `SESSION_SECRET` | Key for signing login cookies (defaults to one derived from `APP_PASSWORD`) |
+| `APP_PASSWORD_HASH` | Require a password to use the app (always required on Vercel). The value is an scrypt hash made by `npm run hash-password`, so the password itself is stored nowhere |
+| `APP_PASSWORD` | Older alternative: the password in plain text. Used only when `APP_PASSWORD_HASH` isn't set |
+| `SESSION_SECRET` | Optional key for signing login cookies (by default derived from the password hash) |
 
 ### Data model
 
@@ -80,7 +81,7 @@ Writes that touch several collections (deleting a problem, recording a review, a
    Both refuse to write into a database that already has data; add `--force` to replace it.
 3. **Deploy**: import the repository in Vercel (framework preset "Other"; `vercel.json` sets the build) and add these environment variables:
    - `MONGODB_URI`: from step 1 (and `MONGODB_DB` if you don't use the default name)
-   - `APP_PASSWORD`: the password you'll log in with (the API refuses to run on Vercel without it)
+   - `APP_PASSWORD_HASH`: run `npm run hash-password`, type your password twice, and paste the printed value (the API refuses to run on Vercel without a password)
 4. Open the site, log in, done.
 
 `vercel.json` runs the API in Vercel's Mumbai region (`bom1`). **Put the Atlas cluster in the same place** (AWS Mumbai, `ap-south-1`), or change `regions` to the Vercel region closest to your cluster (e.g. `dub1` for AWS Ireland `eu-west-1`, `iad1` for AWS `us-east-1`): every database query is a round trip between the two, so the distance adds to each page load. The latency signal at the top right of the app shows the result.
@@ -101,7 +102,8 @@ Only a backup: `npm run copy:cluster -- --backup-only` (saved in `backups/`, whi
 
 ## Security
 
-- **Login**: set a long, random `APP_PASSWORD`. After 10 wrong passwords from one IP within 15 minutes, that IP is locked out until the window ends (tracked in MongoDB, shared by all serverless instances). Changing the password (or `SESSION_SECRET`) logs out every session.
+- **Login**: the password is stored only as a salted scrypt hash (`APP_PASSWORD_HASH`, from `npm run hash-password`); checking it takes about 0.1 s, so guessing is slow even if the hash leaks. Use a long passphrase you don't use anywhere else. After 10 wrong passwords from one IP within 15 minutes, that IP is locked out until the window ends (tracked in MongoDB, shared by all serverless instances). Session cookies are signed with a key derived from the hash (or `SESSION_SECRET`), so a captured cookie can't be used to guess the password, and changing the password logs out every session.
+- **Switching from `APP_PASSWORD`**: run `npm run hash-password`, add `APP_PASSWORD_HASH` in Vercel, delete `APP_PASSWORD`, redeploy. While both are set, the hash wins.
 - **Local mode**: without `APP_PASSWORD` there is no login, so the dev server listens on `127.0.0.1` only. Set `HOST=0.0.0.0` to expose it (only with a password).
 - **API writes** must be JSON and, when the browser sends an `Origin`, come from the same site; this blocks cross-site form posts (CSRF). Problem data is validated (Codeforces-style ids, `http(s)` URLs only), and the UI escapes everything it renders.
 - **Headers**: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, and a strict referrer policy, from Express and from `vercel.json` for static files.
