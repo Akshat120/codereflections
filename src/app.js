@@ -2,7 +2,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { dbReady } from "./db/database.js";
+import { db, dbReady } from "./db/database.js";
 import { authRoutes, requireAuth } from "./auth.js";
 import { problemRoutes } from "./routes/problems.js";
 import { reflectionRoutes } from "./routes/reflections.js";
@@ -119,6 +119,28 @@ app.use("/api", async (_req, res, next) => {
     next();
   } catch (error) {
     res.status(500).json({ error: `Database unavailable: ${error.message}` });
+  }
+});
+
+// Round trip between this server and MongoDB: the median of three pings on
+// the (already open) connection, shown in the page footer
+app.get("/api/db-ping", async (_req, res) => {
+  try {
+    const samples = [];
+    for (let i = 0; i < 3; i++) {
+      const start = process.hrtime.bigint();
+      await db.command({ ping: 1 });
+      samples.push(Number(process.hrtime.bigint() - start) / 1e6);
+    }
+    samples.sort((a, b) => a - b);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      dbMs: Math.round(samples[1] * 10) / 10,
+      samples: samples.map(ms => Math.round(ms * 10) / 10),
+      region: process.env.VERCEL_REGION || null
+    });
+  } catch (error) {
+    res.status(503).json({ error: `Database ping failed: ${error.message}` });
   }
 });
 

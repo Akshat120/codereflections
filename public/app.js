@@ -4021,6 +4021,64 @@ function initTheme() {
   });
 }
 
+// Header signal (top right): round trip between the app server and MongoDB (measured on the
+// server), with the full page -> server -> database time in its tooltip.
+// Measured after the page loads, every minute while the tab is visible, and
+// on click.
+const DB_LATENCY_GOOD_MS = 50;
+const DB_LATENCY_OK_MS = 150;
+let dbLatencyBusy = false;
+
+async function measureDbLatency() {
+  const pill = document.getElementById("db-latency");
+  if (!pill || dbLatencyBusy) return;
+  dbLatencyBusy = true;
+  const text = pill.querySelector(".db-latency-text");
+  pill.classList.add("is-measuring");
+  try {
+    const started = performance.now();
+    // Not through the shared-read cache: every measurement is a fresh request
+    const res = await nativeFetch("/api/db-ping", { cache: "no-store" });
+    const totalMs = Math.round(performance.now() - started);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || typeof data.dbMs !== "number") throw new Error(data.error || `HTTP ${res.status}`);
+
+    const dbMs = data.dbMs;
+    const level = dbMs < DB_LATENCY_GOOD_MS ? "is-good" : dbMs < DB_LATENCY_OK_MS ? "is-ok" : "is-slow";
+    pill.classList.remove("is-good", "is-ok", "is-slow", "is-error");
+    pill.classList.add(level);
+    const shown = `${dbMs < 10 ? dbMs.toFixed(1) : Math.round(dbMs)} ms`;
+    text.textContent = shown;
+    pill.setAttribute("aria-label", `Database latency: ${shown}`);
+    pill.title = [
+      `Server ↔ database round trip: ${dbMs} ms (median of ${data.samples.join(", ")} ms)`,
+      `This page ↔ server ↔ database: ${totalMs} ms`,
+      data.region ? `Server region: ${data.region}` : null,
+      `Measured ${new Date().toLocaleTimeString()}. Click to measure again.`
+    ].filter(Boolean).join("\n");
+  } catch (err) {
+    pill.classList.remove("is-good", "is-ok", "is-slow");
+    pill.classList.add("is-error");
+    text.textContent = "offline";
+    pill.setAttribute("aria-label", "Database offline");
+    pill.title = `Could not reach the database: ${String(err.message).replace(/\.+$/, "")}. Click to try again.`;
+  } finally {
+    pill.classList.remove("is-measuring");
+    dbLatencyBusy = false;
+  }
+}
+
+function initDbLatency() {
+  const pill = document.getElementById("db-latency");
+  if (!pill) return;
+  pill.addEventListener("click", measureDbLatency);
+  // After the page's own data, so the first reading isn't competing with it
+  setTimeout(measureDbLatency, 1500);
+  setInterval(() => {
+    if (!document.hidden) measureDbLatency();
+  }, 60000);
+}
+
 // Initial bootstrap
 // Shows "Log out" in the header when the server requires a password
 async function initSession() {
@@ -4044,6 +4102,7 @@ async function initApp() {
   prefetchApiReads();
   initTheme();
   initSession();
+  initDbLatency();
   await Promise.all([loadStuckReasons(), syncQueueFromDb()]);
   renderProblemViews();
   updateTimer();

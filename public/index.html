@@ -75,6 +75,16 @@
         </a>
       </div>
       <div class="header-right">
+        <button type="button" class="db-latency" id="db-latency" aria-live="polite" aria-label="Database latency: measuring"
+                title="Round trip between the app server and MongoDB. Click to measure again.">
+          <svg class="db-latency-icon" viewBox="0 0 24 22" width="26" height="24" aria-hidden="true">
+            <path class="wifi-arc wifi-arc-3" d="M3.5 10.5 a12 12 0 0 1 17 0"/>
+            <path class="wifi-arc wifi-arc-2" d="M6.3 13.3 a8 8 0 0 1 11.4 0"/>
+            <path class="wifi-arc wifi-arc-1" d="M9.2 16.2 a4 4 0 0 1 5.6 0"/>
+            <circle class="wifi-dot" cx="12" cy="19.2" r="1.7"/>
+          </svg>
+          <span class="db-latency-text">…</span>
+        </button>
         <button type="button" id="btn-theme-toggle" class="cf-theme-toggle-btn" title="Toggle dark/light theme" aria-label="Toggle dark theme">
           <span class="theme-icon">🌙</span>
           <span class="theme-text">Dark Theme</span>
