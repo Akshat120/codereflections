@@ -3508,9 +3508,15 @@ function setManageStatusMessage(msg, isError = false) {
   el.classList.remove("hidden");
 }
 
-// Database Records Overview: MANAGE_PAGE_SIZE rows per page, over the rows
-// matching the search box
-const MANAGE_PAGE_SIZE = 25;
+// Database Records Overview: managePageSize rows per page (chosen in the
+// sidebar, remembered in this browser), over the rows matching the search box
+const MANAGE_PAGE_SIZES = [10, 25, 50, 100];
+const MANAGE_PAGE_SIZE_KEY = "cr_manage_page_size";
+let managePageSize = 25;
+try {
+  const saved = Number(localStorage.getItem(MANAGE_PAGE_SIZE_KEY));
+  if (MANAGE_PAGE_SIZES.includes(saved)) managePageSize = saved;
+} catch (_) {}
 let managePage = 1;
 
 function manageSearchQuery() {
@@ -3530,10 +3536,10 @@ function filteredManageProblems() {
 // longer exists, e.g. after deleting its last row) unless resetPage.
 function renderManageTable({ resetPage = false } = {}) {
   const rows = filteredManageProblems();
-  const totalPages = Math.max(1, Math.ceil(rows.length / MANAGE_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(rows.length / managePageSize));
   managePage = resetPage ? 1 : Math.min(Math.max(1, managePage), totalPages);
-  const start = (managePage - 1) * MANAGE_PAGE_SIZE;
-  const pageRows = rows.slice(start, start + MANAGE_PAGE_SIZE);
+  const start = (managePage - 1) * managePageSize;
+  const pageRows = rows.slice(start, start + managePageSize);
   renderManageTableRows(pageRows, { searching: Boolean(manageSearchQuery()) && manageProblemsCache.length > 0 });
 
   const pagerEl = document.getElementById("manage-pagination");
@@ -3926,6 +3932,22 @@ async function loadManageProblemsView() {
       updateManageTimeButton();
 
       renderManageTable();
+    });
+  }
+
+  // Page size: a display preference, remembered in this browser
+  const pageSizeSelect = document.getElementById("manage-page-size");
+  if (pageSizeSelect && !pageSizeSelect._initialized) {
+    pageSizeSelect._initialized = true;
+    pageSizeSelect.value = String(managePageSize);
+    pageSizeSelect.addEventListener("change", () => {
+      const size = Number(pageSizeSelect.value);
+      if (!MANAGE_PAGE_SIZES.includes(size)) return;
+      managePageSize = size;
+      try {
+        localStorage.setItem(MANAGE_PAGE_SIZE_KEY, String(size));
+      } catch (_) {}
+      renderManageTable({ resetPage: true });
     });
   }
 
