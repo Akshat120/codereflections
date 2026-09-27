@@ -1551,13 +1551,13 @@ function paginationItems(current, total) {
   return items;
 }
 
-function buildPagination(current, total) {
+function buildPagination(current, total, label = "Reflections pages") {
   if (total <= 1) return "";
   const arrow = (label, page, disabled, aria) => disabled
     ? `<span class="cf-page is-disabled" aria-hidden="true">${label}</span>`
     : `<a href="#" class="cf-page" data-page="${page}" aria-label="${aria}">${label}</a>`;
   return `
-    <nav class="cf-pagination" aria-label="Reflections pages">
+    <nav class="cf-pagination" aria-label="${label}">
       ${arrow("←", current - 1, current === 1, "Previous page")}
       ${paginationItems(current, total).map(item => item === "…"
         ? `<span class="cf-page-gap">…</span>`
@@ -3508,7 +3508,54 @@ function setManageStatusMessage(msg, isError = false) {
   el.classList.remove("hidden");
 }
 
-function renderManageTableRows(problems) {
+// Database Records Overview: MANAGE_PAGE_SIZE rows per page, over the rows
+// matching the search box
+const MANAGE_PAGE_SIZE = 25;
+let managePage = 1;
+
+function manageSearchQuery() {
+  return (document.getElementById("manage-search-input")?.value || "").trim().toLowerCase();
+}
+
+function filteredManageProblems() {
+  const q = manageSearchQuery();
+  if (!q) return manageProblemsCache;
+  return manageProblemsCache.filter(p =>
+    `${p.contestId}${p.index}`.toLowerCase().includes(q) ||
+    (p.name || "").toLowerCase().includes(q)
+  );
+}
+
+// Redraws the table and pager. Keeps the current page (moving back if it no
+// longer exists, e.g. after deleting its last row) unless resetPage.
+function renderManageTable({ resetPage = false } = {}) {
+  const rows = filteredManageProblems();
+  const totalPages = Math.max(1, Math.ceil(rows.length / MANAGE_PAGE_SIZE));
+  managePage = resetPage ? 1 : Math.min(Math.max(1, managePage), totalPages);
+  const start = (managePage - 1) * MANAGE_PAGE_SIZE;
+  const pageRows = rows.slice(start, start + MANAGE_PAGE_SIZE);
+  renderManageTableRows(pageRows, { searching: Boolean(manageSearchQuery()) && manageProblemsCache.length > 0 });
+
+  const pagerEl = document.getElementById("manage-pagination");
+  if (!pagerEl) return;
+  if (!rows.length) {
+    pagerEl.innerHTML = "";
+    return;
+  }
+  pagerEl.innerHTML = `
+    <div class="manage-pagination-count">Showing ${start + 1}–${start + pageRows.length} of ${rows.length}</div>
+    ${buildPagination(managePage, totalPages, "Database records pages")}`;
+  pagerEl.querySelectorAll(".cf-pagination a.cf-page").forEach(link => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      managePage = Number(link.dataset.page);
+      renderManageTable();
+      document.getElementById("manage-records-caption")?.scrollIntoView({ block: "nearest" });
+    });
+  });
+}
+
+function renderManageTableRows(problems, { searching = false } = {}) {
   const tbody = document.getElementById("manage-problems-body");
   if (!tbody) return;
 
@@ -3516,7 +3563,7 @@ function renderManageTableRows(problems) {
     tbody.innerHTML = `
       <tr>
         <td colspan="6" style="text-align: center; color: #888; padding: 24px;">
-          No problems found anywhere in the database.
+          ${searching ? "No problems match your search." : "No problems found anywhere in the database."}
         </td>
       </tr>
     `;
@@ -3572,17 +3619,7 @@ function renderManageTableRows(problems) {
       toggleProblemTimeHidden(contestId, index);
 
       // Re-render current manage table rows
-      const searchInput = document.getElementById("manage-search-input");
-      const q = (searchInput?.value || "").trim().toLowerCase();
-      if (!q) {
-        renderManageTableRows(manageProblemsCache);
-      } else {
-        const filtered = manageProblemsCache.filter(p =>
-          `${p.contestId}${p.index}`.toLowerCase().includes(q) ||
-          (p.name || "").toLowerCase().includes(q)
-        );
-        renderManageTableRows(filtered);
-      }
+      renderManageTable();
 
       // Update time displays across the entire app
       renderQueueTable();
@@ -3868,10 +3905,11 @@ async function loadManageProblemsView() {
       summaryEl.textContent = `Found ${data.totalCount} problem${data.totalCount === 1 ? "" : "s"} across database (${data.reflectionsCount} reflections, ${data.queueCount} in queue).`;
     }
 
-    renderManageTableRows(manageProblemsCache);
+    renderManageTable();
   } catch (err) {
     if (summaryEl) summaryEl.textContent = "Error loading database problems.";
-    renderManageTableRows([]);
+    manageProblemsCache = [];
+    renderManageTable({ resetPage: true });
     setManageStatusMessage(err.message, true);
   }
 
@@ -3887,34 +3925,14 @@ async function loadManageProblemsView() {
       localStorage.setItem("cf_manage_hide_time", String(manageHideTime));
       updateManageTimeButton();
 
-      const q = (searchInput?.value || "").trim().toLowerCase();
-      if (!q) {
-        renderManageTableRows(manageProblemsCache);
-      } else {
-        const filtered = manageProblemsCache.filter(p =>
-          `${p.contestId}${p.index}`.toLowerCase().includes(q) ||
-          (p.name || "").toLowerCase().includes(q)
-        );
-        renderManageTableRows(filtered);
-      }
+      renderManageTable();
     });
   }
 
   // Setup search filter listener once
   if (searchInput && !searchInput._initialized) {
     searchInput._initialized = true;
-    searchInput.addEventListener("input", () => {
-      const q = searchInput.value.trim().toLowerCase();
-      if (!q) {
-        renderManageTableRows(manageProblemsCache);
-        return;
-      }
-      const filtered = manageProblemsCache.filter(p =>
-        `${p.contestId}${p.index}`.toLowerCase().includes(q) ||
-        (p.name || "").toLowerCase().includes(q)
-      );
-      renderManageTableRows(filtered);
-    });
+    searchInput.addEventListener("input", () => renderManageTable({ resetPage: true }));
   }
 
   // Setup wipe all listener once

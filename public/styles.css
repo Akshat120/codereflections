@@ -3743,6 +3743,26 @@ kbd {
 /* ==========================================================================
    Pagination (Codeforces style: ← 1 2 3 … 9 →)
    ========================================================================== */
+/* Pager under the Database Records Overview table */
+.manage-pagination {
+  padding: 4px 12px 10px;
+  text-align: center;
+}
+
+.manage-pagination:empty {
+  display: none;
+}
+
+.manage-pagination-count {
+  font-size: 12px;
+  color: #777;
+  margin-top: 6px;
+}
+
+[data-theme="dark"] .manage-pagination-count {
+  color: #8b949e;
+}
+
 .cf-pagination {
   display: flex;
   flex-wrap: wrap;
