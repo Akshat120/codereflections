@@ -363,6 +363,41 @@ a:hover {
   text-decoration: none;
 }
 
+/* Database round-trip pill (a button: click to measure again) */
+button.site-footer-link {
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.db-latency-text {
+  font-variant-numeric: tabular-nums;
+}
+
+.db-latency-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: #9aa3ad; /* measuring */
+}
+
+.db-latency.is-good .db-latency-dot { background: #2da44e; }
+.db-latency.is-ok .db-latency-dot { background: #d4a72c; }
+.db-latency.is-slow .db-latency-dot,
+.db-latency.is-error .db-latency-dot { background: #cf222e; }
+.db-latency.is-measuring .db-latency-dot {
+  animation: db-latency-pulse 1s ease-in-out infinite;
+}
+
+@keyframes db-latency-pulse {
+  50% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-latency.is-measuring .db-latency-dot { animation: none; }
+}
+
 .site-footer-note {
   margin-top: 4px;
 }
