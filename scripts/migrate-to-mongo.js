@@ -48,7 +48,7 @@ async function main() {
   console.log(`Target: MongoDB database "${collections.reflections.dbName}"`);
 
   // Connects and creates the collections' indexes (no data yet)
-  await initDb();
+  await initDb({ waitForIndexes: true });
 
   const docs = {};
   for (const { table, toDoc } of TABLES) {

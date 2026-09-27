@@ -45,8 +45,11 @@
       root.classList.add("auth-pending");
       var reveal = function() { root.classList.remove("auth-pending"); };
       setTimeout(reveal, 5000); // never stay blank if the check hangs
-      fetch("/api/session", { credentials: "same-origin", cache: "no-store" })
+      // Shared with app.js (the header's Log out link), so it's asked once
+      window.__sessionCheck = fetch("/api/session", { credentials: "same-origin", cache: "no-store" })
         .then(function(res) { return res.ok ? res.json() : null; })
+        .catch(function() { return null; });
+      window.__sessionCheck
         .then(function(session) {
           if (session && session.authEnabled && !session.loggedIn) {
             location.replace("/login?next=" + encodeURIComponent(location.pathname + location.search));

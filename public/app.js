@@ -2,14 +2,60 @@
 // session makes any /api call return 401: send the user to the login page and
 // bring them back here afterwards.
 const nativeFetch = window.fetch.bind(window);
-window.fetch = async (input, init) => {
+
+// Identical API reads share one request: pages load several views at once
+// that each ask for the same data (e.g. /api/reflections). A read is reused
+// for a few seconds, and any write (POST/PUT/PATCH/DELETE) to the API clears
+// them all, so what you just saved is always read back fresh.
+const API_READ_TTL_MS = 3000;
+const apiReads = new Map(); // url -> { at, promise of the Response }
+
+function isApiUrl(url) {
+  return /^\/api\//.test(new URL(url, location.href).pathname);
+}
+
+async function fetchWithLogin(input, init) {
   const response = await nativeFetch(input, init);
   const url = typeof input === "string" ? input : input?.url || "";
-  if (response.status === 401 && /^\/api\//.test(new URL(url, location.href).pathname) && !url.includes("/api/login")) {
+  if (response.status === 401 && isApiUrl(url) && !url.includes("/api/login")) {
     location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`;
   }
   return response;
+}
+
+window.fetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input?.url || "";
+  const method = (init?.method || (typeof input === "object" && input?.method) || "GET").toUpperCase();
+  if (!isApiUrl(url)) return fetchWithLogin(input, init);
+  if (method !== "GET") {
+    // Before (so nothing new reuses old data) and after (so a read that
+    // started meanwhile isn't reused either)
+    apiReads.clear();
+    const write = fetchWithLogin(input, init);
+    write.finally(() => apiReads.clear()).catch(() => {});
+    return write;
+  }
+
+  const key = new URL(url, location.href).pathname + new URL(url, location.href).search;
+  const cached = apiReads.get(key);
+  if (!cached || Date.now() - cached.at > API_READ_TTL_MS) {
+    const promise = fetchWithLogin(input, init);
+    apiReads.set(key, { at: Date.now(), promise });
+    // Failures aren't worth sharing: the next read tries again
+    promise.then(res => { if (!res.ok) apiReads.delete(key); }, () => apiReads.delete(key));
+  }
+  // Each caller gets its own copy of the body
+  return (await apiReads.get(key).promise).clone();
 };
+
+// Start the reads every page needs right away, in parallel, instead of one
+// round after another as the views ask for them; the views then get these
+// responses from the shared reads above.
+function prefetchApiReads() {
+  const reads = ["/api/stuck-reasons", "/api/queue", "/api/reflections"];
+  if (location.pathname === "/" || location.pathname === "/review") reads.push("/api/reviews");
+  for (const url of reads) fetch(url).catch(() => {});
+}
 
 const state = {
   problems: [],
@@ -3939,9 +3985,10 @@ function initTheme() {
 // Shows "Log out" in the header when the server requires a password
 async function initSession() {
   try {
-    const res = await fetch("/api/session");
-    if (!res.ok) return;
-    const { authEnabled } = await res.json();
+    // The login gate in index.html already asked; reuse its answer
+    const session = await (window.__sessionCheck || fetch("/api/session").then(res => (res.ok ? res.json() : null)));
+    if (!session) return;
+    const { authEnabled } = session;
     const logout = document.getElementById("btn-logout");
     if (!logout || !authEnabled) return;
     logout.classList.remove("hidden");
@@ -3954,6 +4001,7 @@ async function initSession() {
 }
 
 async function initApp() {
+  prefetchApiReads();
   initTheme();
   initSession();
   await Promise.all([loadStuckReasons(), syncQueueFromDb()]);

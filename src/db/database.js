@@ -63,9 +63,8 @@ export const collections = {
   loginAttempts: db.collection("login_attempts")
 };
 
-export async function initDb() {
-  await client.connect();
-  await Promise.all([
+function ensureIndexes() {
+  return Promise.all([
     collections.reflections.createIndexes([
       { key: { contestId: 1, problemIndex: 1 }, unique: true },
       { key: { id: 1 }, unique: true },
@@ -80,7 +79,21 @@ export async function initDb() {
     // Failed-login counters delete themselves when their window ends
     collections.loginAttempts.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
   ]);
+}
+
+// Connects and makes sure the indexes exist. The app doesn't wait for the
+// indexes (they already exist after the first run, and creating them costs a
+// round trip each on every cold start); the import scripts do, with
+// { waitForIndexes: true }, since they write before any request could.
+export async function initDb({ waitForIndexes = false } = {}) {
+  await client.connect();
   transactionsSupported = await detectTransactionSupport();
+  const indexes = ensureIndexes();
+  if (waitForIndexes) {
+    await indexes;
+  } else {
+    indexes.catch(error => console.error("Could not create MongoDB indexes:", error.message));
+  }
 }
 
 // Integer ids (reflections are linked and ordered by id in the UI, the queue
@@ -99,6 +112,9 @@ export async function nextIds(name, count = 1, options = {}) {
 let transactionsSupported = false;
 
 async function detectTransactionSupport() {
+  // Known from connecting already (no extra round trip); ask only if not
+  const type = client.topology?.description?.type;
+  if (type && type !== "Unknown") return type !== "Single";
   const hello = await db.admin().command({ hello: 1 });
   return Boolean(hello.setName || hello.msg === "isdbgrid");
 }
@@ -146,3 +162,8 @@ export function dbReady() {
   }
   return ready;
 }
+
+// Start connecting as soon as the server (or a cold serverless instance)
+// loads, so the handshake with the database overlaps the first request's
+// login check instead of following it. Errors surface on the next dbReady().
+if (!configError) dbReady().catch(() => {});
