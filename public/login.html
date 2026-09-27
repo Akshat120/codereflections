@@ -50,6 +50,10 @@
         </a>
       </div>
       <div class="header-right">
+        <button type="button" id="btn-theme-toggle" class="cf-theme-toggle-btn" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-icon">🌙</span>
+          <span class="theme-text">Dark Theme</span>
+        </button>
         <a href="#login" class="header-logout">Owner log in</a>
       </div>
     </div>
@@ -197,6 +201,28 @@
       } catch (_) {}
       return "/";
     }
+
+    // Light/dark theme button, as in the app (same saved choice, cf_theme)
+    (function initThemeToggle() {
+      const button = document.getElementById("btn-theme-toggle");
+      const show = theme => {
+        const dark = theme === "dark";
+        button.querySelector(".theme-icon").textContent = dark ? "☀️" : "🌙";
+        button.querySelector(".theme-text").textContent = dark ? "Light Theme" : "Dark Theme";
+        const label = dark ? "Switch to light theme" : "Switch to dark theme";
+        button.title = label;
+        button.setAttribute("aria-label", label);
+      };
+      show(document.documentElement.getAttribute("data-theme") || "light");
+      button.addEventListener("click", () => {
+        const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", theme);
+        try {
+          localStorage.setItem("cf_theme", theme);
+        } catch (_) {}
+        show(theme);
+      });
+    })();
 
     // Already logged in (or no password set): go straight to the journal
     fetch("/api/session", { cache: "no-store" })
