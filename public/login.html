@@ -17,7 +17,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <title>Log in · CodeReflections</title>
+  <title>CodeReflections: a deliberate practice journal for competitive programmers</title>
   <link rel="stylesheet" href="/styles.css">
   <script>
     (function() {
@@ -29,8 +29,6 @@
     })();
   </script>
   <style>
-    .login-wrap { max-width: 360px; margin: 60px auto; padding: 0 16px; }
-    .login-brand { display: flex; justify-content: center; margin-bottom: 18px; }
     .login-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
     .login-field label { font-weight: bold; font-size: 13px; }
     .login-field input { padding: 6px 8px; font-size: 14px; border: 1px solid #b9b9b9; border-radius: 3px; }
@@ -40,30 +38,125 @@
   </style>
 </head>
 <body>
-  <div class="login-wrap">
-    <div class="login-brand">
-      <span class="brand">
-        <img class="brand-logo" src="/logo.svg" alt="" width="40" height="40">
-        <span class="brand-titles">
-          <span class="brand-text" aria-label="CodeReflections"><span class="brand-code" aria-hidden="true"><span class="brand-cap">C</span>ode</span><span class="brand-forces" aria-hidden="true"><span class="brand-cap">R</span>eflections</span></span>
-          <span class="brand-sub">Deliberate Practice <b>Journal</b></span>
-        </span>
-      </span>
-    </div>
-
-    <section class="roundbox">
-      <div class="caption">Log in</div>
-      <div class="roundbox-body">
-        <form id="login-form">
-          <div class="login-field">
-            <label for="password">Password</label>
-            <input type="password" id="password" autocomplete="current-password" required autofocus>
+  <header class="site-header">
+    <div class="header-top">
+      <div class="brand-block">
+        <a class="brand" href="/login">
+          <img class="brand-logo" src="/logo.svg" alt="" width="40" height="40">
+          <div class="brand-titles">
+            <span class="brand-text" aria-label="CodeReflections"><span class="brand-code" aria-hidden="true"><span class="brand-cap">C</span>ode</span><span class="brand-forces" aria-hidden="true"><span class="brand-cap">R</span>eflections</span></span>
+            <span class="brand-sub">Deliberate Practice <b>Journal</b></span>
           </div>
-          <p class="login-error" id="login-error" role="alert"></p>
-          <button type="submit" class="btn">Log in</button>
-        </form>
+        </a>
       </div>
-    </section>
+      <div class="header-right">
+        <a href="#login" class="header-logout">Owner log in</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="landing">
+    <main class="landing-main">
+      <!-- What it is -->
+      <section class="roundbox landing-hero">
+        <h1>Turn every hard problem into <em>a lesson you keep</em>.</h1>
+        <p class="landing-lead">CodeReflections is a practice journal for competitive programmers. Solve a Codeforces problem, then spend ten minutes writing down what unlocked it, so the next time a similar problem shows up, you recognise it instead of starting from zero.</p>
+        <div class="landing-actions">
+          <a class="btn landing-cta" href="#how">See how it works ↓</a>
+          <a class="btn" href="https://github.com/Akshat120/codereflections" target="_blank" rel="noopener">View the source on GitHub</a>
+        </div>
+      </section>
+
+      <section class="roundbox">
+        <div class="caption">Why it exists</div>
+        <div class="landing-body">
+          <p>Solving more problems isn't the same as getting better. Two weeks after an "accepted", most of us couldn't solve the same problem again: the one idea that cracked it was never written down, so it faded, and the same mistakes come back.</p>
+          <p>The valuable part of a hard problem isn't the verdict, it's the insight. CodeReflections makes capturing it a habit, and brings it back before you forget it.</p>
+        </div>
+      </section>
+
+      <section class="roundbox" id="how">
+        <div class="caption">How it works</div>
+        <div class="landing-body">
+          <ol class="landing-steps">
+            <li><span class="landing-step-num" aria-hidden="true">1</span><h3>Load</h3><p>Paste a Codeforces link or code like <code>1904A</code>. Name, rating and tags are fetched for you.</p></li>
+            <li><span class="landing-step-num" aria-hidden="true">2</span><h3>Solve</h3><p>Work on it on Codeforces while a stopwatch tracks the time you spend.</p></li>
+            <li><span class="landing-step-num" aria-hidden="true">3</span><h3>Reflect</h3><p>Answer five short questions while it's fresh: the key idea, the trap, the pattern.</p></li>
+            <li><span class="landing-step-num" aria-hidden="true">4</span><h3>Review</h3><p>Spaced repetition brings each lesson back after 1, 3, 7, 14… days. Progress shows where you get stuck.</p></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="roundbox">
+        <div class="caption">The five questions</div>
+        <div class="landing-body">
+          <dl class="landing-questions">
+            <div><dt>Key observation</dt><dd>The one idea that unlocked the problem.</dd></div>
+            <div><dt>What made me stuck</dt><dd>The trap, and how you got out. Tagged with a reason like "missed a constraint".</dd></div>
+            <div><dt>Pattern</dt><dd>The technique or family, e.g. "sliding window", "sort then greedy".</dd></div>
+            <div><dt>Future trigger</dt><dd>What to look for next time, so you recognise it faster.</dd></div>
+            <div><dt>Simplest implementation</dt><dd>The cleanest code that solves it.</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="roundbox">
+        <div class="caption">What a reflection looks like</div>
+        <div class="landing-body">
+          <article class="landing-example">
+            <header class="landing-example-head">
+              <span><a href="https://codeforces.com/problemset/problem/1850/D" target="_blank" rel="noopener">1850D · Balanced Round</a> <b class="rating-gray">900</b> <span class="landing-tag">greedy</span> <span class="landing-tag">sortings</span></span>
+              <span>30 min</span>
+            </header>
+            <dl>
+              <div><dt>Key observation</dt><dd>Answer = n − the longest run we can keep; shuffling is allowed, so sort first.</dd></div>
+              <div><dt>Pattern</dt><dd>Sort + sliding window of variable size.</dd></div>
+              <div><dt>Future trigger</dt><dd>"You may reorder the array" → try sorting it.</dd></div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
+      <section class="roundbox">
+        <div class="caption">Why I built it</div>
+        <div class="landing-body">
+          <blockquote class="landing-quote">
+            I kept solving Codeforces problems and forgetting them. Rereading my old submissions told me <i>what</i> I wrote, not <i>why</i> it worked or where I went wrong. So I built the journal I wanted: one page per hard problem, written while the lesson is fresh, and a review queue that makes sure it sticks.
+            <cite>Akshat Dhiman, creator</cite>
+          </blockquote>
+        </div>
+      </section>
+    </main>
+
+    <aside class="landing-side">
+      <section class="roundbox" id="login">
+        <div class="caption">Owner log in</div>
+        <div class="roundbox-body landing-side-body">
+          <p class="landing-note">This journal is private: the reflections belong to one person.</p>
+          <form id="login-form">
+            <div class="login-field">
+              <label for="password">Password</label>
+              <input type="password" id="password" autocomplete="current-password" required>
+            </div>
+            <p class="login-error" id="login-error" role="alert"></p>
+            <button type="submit" class="btn">Log in</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="roundbox">
+        <div class="caption">Want your own?</div>
+        <div class="roundbox-body landing-side-body">
+          <p class="landing-note">It's open source and free to host:</p>
+          <ul class="landing-list">
+            <li>Node.js + Express</li>
+            <li>MongoDB Atlas (free tier)</li>
+            <li>Vercel (free tier)</li>
+          </ul>
+          <p class="landing-note landing-note-last"><a href="https://github.com/Akshat120/codereflections#readme" target="_blank" rel="noopener">Setup guide in the README →</a></p>
+        </div>
+      </section>
+    </aside>
   </div>
 
   <footer class="site-footer">
@@ -103,6 +196,18 @@
         if (url.origin === location.origin) return url.pathname + url.search + url.hash;
       } catch (_) {}
       return "/";
+    }
+
+    // Already logged in (or no password set): go straight to the journal
+    fetch("/api/session", { cache: "no-store" })
+      .then(res => (res.ok ? res.json() : null))
+      .then(session => { if (session?.loggedIn) location.replace(nextPath()); })
+      .catch(() => {});
+
+    // On wide screens the form sits beside the intro, so put the cursor in it;
+    // on phones it's further down the page and focusing would scroll there
+    if (window.matchMedia("(min-width: 861px)").matches) {
+      document.getElementById("password").focus({ preventScroll: true });
     }
 
     form.addEventListener("submit", async (event) => {
