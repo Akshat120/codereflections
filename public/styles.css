@@ -16,6 +16,15 @@
   box-sizing: border-box;
 }
 
+/* Phone browsers enlarge text they think is too small to read (iOS Safari
+   "text inflation", Android "font boosting"), block by block, so a code
+   listing that scrolls sideways ended up with some lines bigger than others.
+   Use the sizes set here everywhere, at every orientation. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: #fff;
