@@ -363,40 +363,90 @@ a:hover {
   text-decoration: none;
 }
 
-/* Database round-trip pill (a button: click to measure again) */
-button.site-footer-link {
+/* Database round trip: a Wi-Fi style signal with the latency under it.
+   Arcs light up by speed (3 = fast, 2 = fair, 1 = slow); a click measures
+   again. */
+.site-footer-links {
+  align-items: center;
+}
+
+.db-latency {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
   font: inherit;
-  font-weight: 600;
   cursor: pointer;
 }
 
+.db-latency:hover,
+.db-latency:focus-visible {
+  background: rgba(59, 89, 152, 0.08);
+}
+
+.db-latency-icon {
+  display: block;
+}
+
+.wifi-arc {
+  fill: none;
+  stroke: #d0d7de; /* unlit */
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  transition: stroke 0.2s;
+}
+
+.wifi-dot {
+  fill: #9aa3ad;
+  transition: fill 0.2s;
+}
+
 .db-latency-text {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #57606a;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.db-latency-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-  background: #9aa3ad; /* measuring */
-}
+/* fast: all three arcs */
+.db-latency.is-good .wifi-arc,
+.db-latency.is-good .wifi-dot { stroke: #2da44e; fill: #2da44e; }
+.db-latency.is-good .wifi-arc { fill: none; }
+/* fair: two arcs */
+.db-latency.is-ok .wifi-arc-1,
+.db-latency.is-ok .wifi-arc-2 { stroke: #d4a72c; }
+.db-latency.is-ok .wifi-dot { fill: #d4a72c; }
+/* slow: one arc */
+.db-latency.is-slow .wifi-arc-1 { stroke: #cf222e; }
+.db-latency.is-slow .wifi-dot { fill: #cf222e; }
+/* offline: no arcs, red dot and label */
+.db-latency.is-error .wifi-dot { fill: #cf222e; }
+.db-latency.is-error .db-latency-text { color: #cf222e; }
 
-.db-latency.is-good .db-latency-dot { background: #2da44e; }
-.db-latency.is-ok .db-latency-dot { background: #d4a72c; }
-.db-latency.is-slow .db-latency-dot,
-.db-latency.is-error .db-latency-dot { background: #cf222e; }
-.db-latency.is-measuring .db-latency-dot {
+.db-latency.is-measuring .db-latency-icon {
   animation: db-latency-pulse 1s ease-in-out infinite;
 }
 
 @keyframes db-latency-pulse {
-  50% { opacity: 0.3; }
+  50% { opacity: 0.35; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .db-latency.is-measuring .db-latency-dot { animation: none; }
+  .db-latency.is-measuring .db-latency-icon { animation: none; }
 }
+
+[data-theme="dark"] .wifi-arc { stroke: #3d444b; }
+[data-theme="dark"] .wifi-dot { fill: #6e7781; }
+[data-theme="dark"] .db-latency-text { color: #8b949e; }
+[data-theme="dark"] .db-latency:hover,
+[data-theme="dark"] .db-latency:focus-visible { background: rgba(88, 166, 255, 0.1); }
 
 .site-footer-note {
   margin-top: 4px;

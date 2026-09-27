@@ -4021,7 +4021,7 @@ function initTheme() {
   });
 }
 
-// Footer pill: round trip between the app server and MongoDB (measured on the
+// Footer signal: round trip between the app server and MongoDB (measured on the
 // server), with the full page -> server -> database time in its tooltip.
 // Measured after the page loads, every minute while the tab is visible, and
 // on click.
@@ -4047,7 +4047,9 @@ async function measureDbLatency() {
     const level = dbMs < DB_LATENCY_GOOD_MS ? "is-good" : dbMs < DB_LATENCY_OK_MS ? "is-ok" : "is-slow";
     pill.classList.remove("is-good", "is-ok", "is-slow", "is-error");
     pill.classList.add(level);
-    text.textContent = `Database ${dbMs < 10 ? dbMs.toFixed(1) : Math.round(dbMs)} ms`;
+    const shown = `${dbMs < 10 ? dbMs.toFixed(1) : Math.round(dbMs)} ms`;
+    text.textContent = shown;
+    pill.setAttribute("aria-label", `Database latency: ${shown}`);
     pill.title = [
       `Server ↔ database round trip: ${dbMs} ms (median of ${data.samples.join(", ")} ms)`,
       `This page ↔ server ↔ database: ${totalMs} ms`,
@@ -4057,7 +4059,8 @@ async function measureDbLatency() {
   } catch (err) {
     pill.classList.remove("is-good", "is-ok", "is-slow");
     pill.classList.add("is-error");
-    text.textContent = "Database offline";
+    text.textContent = "offline";
+    pill.setAttribute("aria-label", "Database offline");
     pill.title = `Could not reach the database: ${String(err.message).replace(/\.+$/, "")}. Click to try again.`;
   } finally {
     pill.classList.remove("is-measuring");
