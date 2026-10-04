@@ -6,16 +6,72 @@
 
 <p align="center"><b>Deliberate Practice Journal</b>: turn every hard Codeforces problem into a lesson.</p>
 
-A Node.js + Express monolith that helps competitive programmers turn each difficult Codeforces problem into reusable knowledge.
+<p align="center">
+  <img src="docs/screenshots/dashboard.jpg" alt="CodeReflections dashboard: today's stats, recent reflections, active solve session, stuck reasons and slowest tags" width="900">
+</p>
+
+A Node.js + Express app that helps competitive programmers turn each difficult Codeforces problem into reusable knowledge: solve, write down what unlocked it, and review it before you forget.
+
+## A quick tour
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <b>1 · Load</b><br>
+      <img src="docs/screenshots/load.jpg" alt="Load page: paste Codeforces problem codes or URLs"><br>
+      <sub>Paste codes or links (1904A, 1904B, …); name, rating and tags are fetched from Codeforces.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <b>2 · Solve</b><br>
+      <img src="docs/screenshots/problem.jpg" alt="Problem page: active solve session with stopwatch and practice queue"><br>
+      <sub>The active problem with a running stopwatch, and the practice queue.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>3 · Reflect</b><br>
+      <img src="docs/screenshots/reflect.jpg" alt="Reflect page: five questions with a Markdown editor"><br>
+      <sub>Five questions while it's fresh, with Markdown, code and LaTeX support.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <b>4 · Review</b><br>
+      <img src="docs/screenshots/review.jpg" alt="Review page: spaced repetition schedule"><br>
+      <sub>Spaced repetition: each lesson comes back after 1, 3, 7, 14… days.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>5 · Progress</b><br>
+      <img src="docs/screenshots/progress.jpg" alt="Progress page: completed reflections with filters"><br>
+      <sub>Every reflection, with filters by rating, tag, difficulty and search.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <b>6 · Notes</b><br>
+      <img src="docs/screenshots/progress-notes.jpg" alt="Progress page with a reflection expanded"><br>
+      <sub>Expand any row to reread the observation, the trap and the pattern.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>7 · Manage</b><br>
+      <img src="docs/screenshots/manage.jpg" alt="Manage page: all records with edit, hide and delete actions"><br>
+      <sub>Edit times and dates, hide times, delete; paginated.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <b>8 · The rule</b><br>
+      <img src="docs/screenshots/rule.jpg" alt="Rule page: how to turn one hard solve into durable skill"><br>
+      <sub>The reflection habit the app is built around.</sub>
+    </td>
+  </tr>
+</table>
 
 ## Workflow
 
-1. Paste a Codeforces problem URL.
-2. The server fetches problem metadata (name, rating, tags, contest ID, index).
-3. Solve the problem while the app tracks time spent.
-4. Fill out five mandatory post-solve reflection questions on one page.
-5. Save the reflection to MongoDB.
-6. Review completed problems from your personal journal.
+1. **Load**: paste a Codeforces problem code or URL; the server fetches its name, rating, tags, contest ID and index.
+2. **Solve**: work on it while the app tracks the time spent.
+3. **Reflect**: answer five questions (key observation, what made you stuck, pattern, future trigger, simplest implementation); it's saved to MongoDB.
+4. **Review**: spaced repetition brings each reflection back after 1, 3, 7, 14… days; grade yourself and the schedule adapts.
+5. **Progress**: search and filter your journal, and see where you get stuck most and which tags are slowest.
 
 ## Architecture
 

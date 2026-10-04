@@ -50,6 +50,10 @@
         </a>
       </div>
       <div class="header-right">
+        <button type="button" id="btn-theme-toggle" class="cf-theme-toggle-btn" title="Switch to dark theme" aria-label="Switch to dark theme">
+          <span class="theme-icon">🌙</span>
+          <span class="theme-text">Dark Theme</span>
+        </button>
         <a href="#login" class="header-logout">Owner log in</a>
       </div>
     </div>
@@ -175,7 +179,7 @@
       </a>
     </nav>
     <div class="site-footer-note">
-      © <span class="site-footer-year">2026</span> Akshat Dhiman · Problems belong to their authors on
+      © <span class="site-footer-year">2026</span> <a href="https://akshatdhiman.in" target="_blank" rel="noopener">Akshat Dhiman</a> · Problems belong to their authors on
       <a href="https://codeforces.com" target="_blank" rel="noopener">Codeforces</a>; this project is not affiliated with Codeforces.
     </div>
   </footer>
@@ -197,6 +201,28 @@
       } catch (_) {}
       return "/";
     }
+
+    // Light/dark theme button, as in the app (same saved choice, cf_theme)
+    (function initThemeToggle() {
+      const button = document.getElementById("btn-theme-toggle");
+      const show = theme => {
+        const dark = theme === "dark";
+        button.querySelector(".theme-icon").textContent = dark ? "☀️" : "🌙";
+        button.querySelector(".theme-text").textContent = dark ? "Light Theme" : "Dark Theme";
+        const label = dark ? "Switch to light theme" : "Switch to dark theme";
+        button.title = label;
+        button.setAttribute("aria-label", label);
+      };
+      show(document.documentElement.getAttribute("data-theme") || "light");
+      button.addEventListener("click", () => {
+        const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", theme);
+        try {
+          localStorage.setItem("cf_theme", theme);
+        } catch (_) {}
+        show(theme);
+      });
+    })();
 
     // Already logged in (or no password set): go straight to the journal
     fetch("/api/session", { cache: "no-store" })
