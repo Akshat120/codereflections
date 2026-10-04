@@ -111,6 +111,10 @@ export const authRoutes = Router();
 
 authRoutes.get("/session", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
+  // Misconfigured (e.g. no password set on Vercel / Cloudflare): send the
+  // visitor to the login page, which shows what to fix, not to the app
+  const configError = authConfigError();
+  if (configError) return res.json({ authEnabled: true, loggedIn: false, error: configError });
   res.json({ authEnabled: authEnabled(), loggedIn: isLoggedIn(req) });
 });
 

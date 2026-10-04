@@ -227,7 +227,10 @@
     // Already logged in (or no password set): go straight to the journal
     fetch("/api/session", { cache: "no-store" })
       .then(res => (res.ok ? res.json() : null))
-      .then(session => { if (session?.loggedIn) location.replace(nextPath()); })
+      .then(session => {
+        if (session?.loggedIn) location.replace(nextPath());
+        else if (session?.error) errorEl.textContent = session.error;
+      })
       .catch(() => {});
 
     // On wide screens the form sits beside the intro, so put the cursor in it;
