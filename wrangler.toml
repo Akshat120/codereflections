@@ -1,4 +1,12 @@
 name = "codereflections"
-main = "src/server.js"
+main = "src/entry.cloudflare.js"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Lets app.js know it's running on Cloudflare (skips express.static there)
+[vars]
+CF_WORKER = "1"
+
+# Cloudflare serves everything in ./public directly (CSS, JS, KaTeX, etc.)
+[assets]
+directory = "./public"
