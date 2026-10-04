@@ -1905,6 +1905,9 @@ a:hover {
   padding: 8px 14px 12px;
   box-sizing: border-box;
   overflow: hidden;
+  /* Wide content (a long code line) must not stretch the table: the details
+     take the table's width and their code and answers scroll inside it */
+  contain: inline-size;
   background: #ffffff;
 }
 
