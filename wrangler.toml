@@ -3,6 +3,10 @@ main = "src/entry.cloudflare.js"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Keep variables added in the dashboard: without this, every deploy deletes
+# the plain-text ones (only encrypted secrets would survive)
+keep_vars = true
+
 # Copies KaTeX / prettify into public/vendor before deploying (same as Vercel)
 [build]
 command = "npm run build"
