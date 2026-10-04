@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { MongoClient } from "mongodb";
 
 // MongoDB connection. MONGODB_URI points at the server (a MongoDB Atlas cluster
@@ -21,8 +22,8 @@ const clientOptions = {
 function databaseUri() {
   const uri = (process.env.MONGODB_URI || "").trim().replace(/^(["'])(.*)\1$/, "$2").trim();
   if (uri) return { uri };
-  if (process.env.VERCEL) {
-    return { uri: DEFAULT_LOCAL_URI, error: "MONGODB_URI is not set. Add it in the Vercel project settings." };
+  if (process.env.VERCEL || process.env.CF_WORKER) {
+    return { uri: DEFAULT_LOCAL_URI, error: "MONGODB_URI is not set. Add it in the Vercel / Cloudflare project settings." };
   }
   return { uri: DEFAULT_LOCAL_URI };
 }
@@ -36,7 +37,7 @@ function createClient() {
     };
   }
   try {
-    return { client: new MongoClient(uri, clientOptions), configError: error ?? null };
+    return { client: new MongoClient(uri, clientOptions), uri, configError: error ?? null };
   } catch (parseError) {
     return {
       client: new MongoClient(DEFAULT_LOCAL_URI, clientOptions),
@@ -50,18 +51,51 @@ function createClient() {
 // reuse it (and its connection pool) through globalThis.
 const cached = globalThis.__codeReflectionsMongo ??= createClient();
 const { configError } = cached;
-export const client = cached.client;
+const dbName = process.env.MONGODB_DB || DEFAULT_DB_NAME;
 
-export const db = client.db(process.env.MONGODB_DB || DEFAULT_DB_NAME);
+// Cloudflare Workers only let a connection be used by the request that opened
+// it, so there each request gets its own client (runWithRequestClient, called
+// by src/entry.cloudflare.js) and db / collections below stand for that
+// request's. Everywhere else they are plain objects on the shared client.
+const onWorkers = Boolean(process.env.CF_WORKER);
+const requestScope = new AsyncLocalStorage();
+const currentClient = () => (onWorkers ? requestScope.getStore()?.client : null) ?? cached.client;
+
+function perRequest(resolve) {
+  return new Proxy({}, {
+    get(_target, prop) {
+      const target = resolve();
+      const value = target[prop];
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  });
+}
+
+export const client = onWorkers ? perRequest(currentClient) : cached.client;
+export const db = onWorkers ? perRequest(() => currentClient().db(dbName)) : client.db(dbName);
+
+const collection = name =>
+  onWorkers ? perRequest(() => currentClient().db(dbName).collection(name)) : db.collection(name);
 
 export const collections = {
-  reflections: db.collection("reflections"),
-  queue: db.collection("practice_queue"),
-  reviewState: db.collection("review_state"),
-  reviewLog: db.collection("review_log"),
-  counters: db.collection("counters"),
-  loginAttempts: db.collection("login_attempts")
+  reflections: collection("reflections"),
+  queue: collection("practice_queue"),
+  reviewState: collection("review_state"),
+  reviewLog: collection("review_log"),
+  counters: collection("counters"),
+  loginAttempts: collection("login_attempts")
 };
+
+// Workers: runs handle() with a fresh client for this request, closed when
+// the response is done
+export function runWithRequestClient(res, handle) {
+  if (configError) return handle();
+  const requestClient = new MongoClient(cached.uri, clientOptions);
+  const close = () => requestClient.close().catch(() => {});
+  res.once("finish", close);
+  res.once("close", close);
+  return requestScope.run({ client: requestClient, ready: undefined }, handle);
+}
 
 function ensureIndexes() {
   return Promise.all([
@@ -85,9 +119,13 @@ function ensureIndexes() {
 // indexes (they already exist after the first run, and creating them costs a
 // round trip each on every cold start); the import scripts do, with
 // { waitForIndexes: true }, since they write before any request could.
+let indexesRequested = false;
 export async function initDb({ waitForIndexes = false } = {}) {
-  await client.connect();
+  await currentClient().connect();
   transactionsSupported = await detectTransactionSupport();
+  // Once per process (on Workers, per isolate rather than per request)
+  if (indexesRequested && !waitForIndexes) return;
+  indexesRequested = true;
   const indexes = ensureIndexes();
   if (waitForIndexes) {
     await indexes;
@@ -113,7 +151,7 @@ let transactionsSupported = false;
 
 async function detectTransactionSupport() {
   // Known from connecting already (no extra round trip); ask only if not
-  const type = client.topology?.description?.type;
+  const type = currentClient().topology?.description?.type;
   if (type && type !== "Unknown") return type !== "Single";
   const hello = await db.admin().command({ hello: 1 });
   return Boolean(hello.setName || hello.msg === "isdbgrid");
@@ -123,7 +161,7 @@ async function detectTransactionSupport() {
 // supports it. `work` must pass { session } to every operation it runs.
 export async function withTransaction(work) {
   if (!transactionsSupported) return work(undefined);
-  const session = client.startSession();
+  const session = currentClient().startSession();
   try {
     return await session.withTransaction(() => work(session));
   } finally {
@@ -154,6 +192,14 @@ function explain(error) {
 let ready;
 export function dbReady() {
   if (configError) return Promise.reject(new Error(configError));
+  if (onWorkers) {
+    const scope = requestScope.getStore();
+    if (!scope) return Promise.reject(new Error("No database client for this request."));
+    return scope.ready ??= initDb().catch(error => {
+      scope.ready = undefined;
+      throw new Error(explain(error));
+    });
+  }
   if (!ready) {
     ready = initDb().catch(error => {
       ready = undefined;
@@ -166,4 +212,6 @@ export function dbReady() {
 // Start connecting as soon as the server (or a cold serverless instance)
 // loads, so the handshake with the database overlaps the first request's
 // login check instead of following it. Errors surface on the next dbReady().
-if (!configError) dbReady().catch(() => {});
+// Not on Cloudflare Workers: they forbid network I/O outside a request, so the
+// Worker connects on its first request instead.
+if (!configError && !process.env.CF_WORKER) dbReady().catch(() => {});

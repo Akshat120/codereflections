@@ -3,10 +3,22 @@ main = "src/entry.cloudflare.js"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Lets app.js know it's running on Cloudflare (skips express.static there)
+# Copies KaTeX / prettify into public/vendor before deploying (same as Vercel)
+[build]
+command = "npm run build"
+
+# Lets the app know it's running on Cloudflare (skips the local static handlers).
+# Secrets (MONGODB_URI, APP_PASSWORD_HASH, optional SESSION_SECRET / MONGODB_DB)
+# go in the dashboard: Worker → Settings → Variables and Secrets.
 [vars]
 CF_WORKER = "1"
 
-# Cloudflare serves everything in ./public directly (CSS, JS, KaTeX, etc.)
+# Cloudflare serves ./public directly: /login → login.html, and the app's page
+# routes (/progress, /review, ...) fall back to index.html. Only the API and
+# /health reach the Worker. Headers and the /journal redirect: public/_headers
+# and public/_redirects.
 [assets]
 directory = "./public"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/health"]

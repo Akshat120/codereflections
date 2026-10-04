@@ -31,7 +31,7 @@ function authConfigError() {
   if (passwordHash() && !parseHash(passwordHash())) {
     return "APP_PASSWORD_HASH is not a valid hash. Generate one with: npm run hash-password";
   }
-  if (process.env.VERCEL && !authEnabled()) {
+  if ((process.env.VERCEL || process.env.CF_WORKER) && !authEnabled()) {
     return "No password is set on the server (APP_PASSWORD_HASH).";
   }
   return null;

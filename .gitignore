@@ -12,6 +12,8 @@ data/
 .env
 .env.*
 .vercel/
+.wrangler/
+.dev.vars*
 
 # Vendor files copied into public/ at build time
 public/vendor/
