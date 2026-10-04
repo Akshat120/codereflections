@@ -11,12 +11,15 @@ import { manageRoutes } from "./routes/manage.js";
 import { reviewRoutes } from "./routes/reviews.js";
 import { STUCK_REASON_GROUPS } from "./stuckReasons.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// The Express app, shared by the local server (src/server.js), the Vercel
+// function (api/index.js) and the Cloudflare Worker (src/entry.cloudflare.js).
+// On Vercel and Cloudflare, static files and page routes are served by the CDN
+// (see vercel.json, wrangler.toml); the static handlers here matter only locally.
+// Workers have no files on disk (import.meta.url isn't a file URL there), so
+// they skip them entirely.
+const onWorkers = Boolean(process.env.CF_WORKER) || typeof import.meta.url !== "string";
+const __dirname = onWorkers ? "/" : path.dirname(fileURLToPath(import.meta.url));
 
-// The Express app, shared by the local server (src/server.js) and the Vercel
-// function (api/index.js). On Vercel, static files and page routes are served
-// by the CDN (see vercel.json); these static handlers matter only locally.
 const app = express();
 app.disable("x-powered-by");
 
@@ -78,25 +81,27 @@ app.get("/journal", (_req, res) => {
   res.redirect(301, "/progress");
 });
 
-app.get("/login", (_req, res) => {
-  sendPublicFile(res, "login.html");
-});
-
-for (const route of clientRoutes) {
-  app.get(route, (_req, res) => {
-    sendPublicFile(res, "index.html");
+if (!onWorkers) {
+  app.get("/login", (_req, res) => {
+    sendPublicFile(res, "login.html");
   });
-}
 
-app.use(express.static(publicDir));
-app.use(
-  "/vendor/katex",
-  express.static(path.join(__dirname, "../node_modules/katex/dist"))
-);
-app.use(
-  "/vendor/prettify",
-  express.static(path.join(__dirname, "../node_modules/code-prettify/src"))
-);
+  for (const route of clientRoutes) {
+    app.get(route, (_req, res) => {
+      sendPublicFile(res, "index.html");
+    });
+  }
+
+  app.use(express.static(publicDir));
+  app.use(
+    "/vendor/katex",
+    express.static(path.join(__dirname, "../node_modules/katex/dist"))
+  );
+  app.use(
+    "/vendor/prettify",
+    express.static(path.join(__dirname, "../node_modules/code-prettify/src"))
+  );
+}
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
