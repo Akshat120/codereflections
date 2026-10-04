@@ -783,31 +783,38 @@ function setActiveNav(path) {
   document.querySelectorAll(".nav-link[data-route]").forEach(link => {
     link.classList.toggle("active", link.getAttribute("href") === path);
   });
-  scrollActiveNavIntoView();
+  const active = document.querySelector(".nav-link.active");
+  const label = document.getElementById("nav-toggle-label");
+  if (label) label.textContent = active ? active.textContent.trim() : "Menu";
+  setNavOpen(false);
 }
 
-// On narrow screens the menu is one sideways-scrolling row: keep the current
-// page's link visible and show a fade on whichever edge hides more links.
-function updateNavScrollHints() {
-  const bar = document.querySelector(".nav-links");
-  if (!bar) return;
-  const maxScroll = bar.scrollWidth - bar.clientWidth;
-  bar.classList.toggle("can-scroll-left", maxScroll > 1 && bar.scrollLeft > 1);
-  bar.classList.toggle("can-scroll-right", maxScroll > 1 && bar.scrollLeft < maxScroll - 1);
+// On narrow screens the menu collapses behind a hamburger button that shows
+// the current page's name; the links drop down as a list when it is open.
+const navBar = document.querySelector(".main-nav");
+const navToggle = document.getElementById("nav-toggle");
+
+function setNavOpen(open) {
+  if (!navBar || !navToggle) return;
+  navBar.classList.toggle("nav-open", open);
+  navToggle.setAttribute("aria-expanded", String(open));
 }
 
-function scrollActiveNavIntoView() {
-  const bar = document.querySelector(".nav-links");
-  const active = bar?.querySelector("a.active");
-  if (bar && active && bar.scrollWidth > bar.clientWidth) {
-    const left = active.offsetLeft - (bar.clientWidth - active.offsetWidth) / 2;
-    bar.scrollLeft = Math.max(0, left);
+navToggle?.addEventListener("click", () => {
+  setNavOpen(!navBar.classList.contains("nav-open"));
+});
+document.querySelector(".nav-links")?.addEventListener("click", event => {
+  if (event.target.closest("a")) setNavOpen(false);
+});
+document.addEventListener("click", event => {
+  if (navBar && !navBar.contains(event.target)) setNavOpen(false);
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && navBar?.classList.contains("nav-open")) {
+    setNavOpen(false);
+    navToggle.focus();
   }
-  updateNavScrollHints();
-}
-
-document.querySelector(".nav-links")?.addEventListener("scroll", updateNavScrollHints, { passive: true });
-window.addEventListener("resize", scrollActiveNavIntoView);
+});
 
 function syncProblemViews() {
   const hasQueue = state.problems.length > 0;

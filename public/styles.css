@@ -258,6 +258,10 @@ a:hover {
   border-bottom: 3px solid var(--cf-accent);
 }
 
+.nav-toggle {
+  display: none;
+}
+
 .nav-external::after {
   content: " ↗";
   font-size: 10px;
@@ -1514,6 +1518,13 @@ a:hover {
   padding: 1px 5px;
   border-radius: 3px;
   border: 1px solid #dbe2ea;
+  /* A span too long for its line scrolls sideways instead of being cut off */
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  vertical-align: bottom;
+  box-sizing: border-box;
+  scrollbar-width: thin;
 }
 
 .markdown-body .md-code-wrapper {
@@ -3503,50 +3514,99 @@ a:hover {
   color: #777;
 }
 /* ==========================================================================
-   Phone/tablet menu: one row that scrolls sideways (Codeforces mobile style)
+   Phone/tablet menu: a hamburger button that drops the links down as a list
    ========================================================================== */
 @media (max-width: 860px) {
   .main-nav {
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 0 8px;
   }
-  .nav-links {
-    position: relative;
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     flex: 1 1 auto;
     min-width: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    padding: 8px 4px;
+    background: none;
+    border: 0;
+    color: #000;
+    font-family: var(--cf-font-menu);
+    font-size: 16px;
+    line-height: 20px;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    cursor: pointer;
   }
-  .nav-links::-webkit-scrollbar {
-    display: none;
+  .nav-toggle:focus-visible {
+    outline: 1px dotted currentColor;
+    outline-offset: -2px;
   }
-  /* Fade only the edge that has more links beyond it */
-  .nav-links.can-scroll-right {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-  }
-  .nav-links.can-scroll-left {
-    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
-  }
-  .nav-links.can-scroll-left.can-scroll-right {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
-  }
-  .nav-links a {
+  .nav-toggle-icon {
+    display: inline-flex;
     flex: 0 0 auto;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 18px;
+    height: 14px;
+  }
+  .nav-toggle-icon span {
+    display: block;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  /* Open: the three bars become a cross */
+  .nav-open .nav-toggle-icon span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  .nav-open .nav-toggle-icon span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-open .nav-toggle-icon span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+  .nav-toggle-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
-    padding: 8px 10px 6px;
-    margin-bottom: 0;
   }
   .nav-search {
     flex: 0 0 auto;
   }
-  .nav-search input {
-    width: 72px;
+  .nav-links {
+    display: none;
+    order: 3;
+    flex: 1 0 100%;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    margin: 0 -8px;
+    padding: 4px 0;
+    border-top: 1px solid #b9b9b9;
+  }
+  .nav-open .nav-links {
+    display: flex;
+  }
+  .nav-links a {
+    display: block;
+    padding: 10px 12px;
+    margin-bottom: 0;
+    border-bottom: 0;
+    border-left: 3px solid transparent;
+  }
+  .nav-links a.active {
+    border-bottom: 0;
+    border-left-color: var(--cf-accent);
+  }
+  [data-theme="dark"] .nav-toggle {
+    color: #e0e0e0;
+  }
+  [data-theme="dark"] .nav-links {
+    border-top-color: #383c40;
+  }
+  [data-theme="dark"] .nav-links a.active {
+    border-left-color: #58a6ff;
   }
 }
 
