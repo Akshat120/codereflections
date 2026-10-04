@@ -94,7 +94,11 @@
     </div>
     <div class="nav-container">
       <nav class="main-nav" aria-label="CodeReflections Navigation">
-        <div class="nav-links">
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-links">
+          <span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="nav-toggle-label" id="nav-toggle-label">Menu</span>
+        </button>
+        <div class="nav-links" id="nav-links">
           <a class="nav-link active" href="/" data-route="home">HOME</a>
           <a class="nav-link" href="/load" data-route="load">LOAD</a>
           <a class="nav-link" href="/problem" data-route="problem">PROBLEM</a>
