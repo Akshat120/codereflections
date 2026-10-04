@@ -1415,6 +1415,12 @@ a:hover {
   white-space: normal !important;
 }
 
+/* Anything too wide for a reflection answer (long formulas, mostly) scrolls
+   sideways inside its box instead of being cut off */
+.spoiler-content.markdown-body {
+  overflow-x: auto;
+}
+
 .markdown-body pre,
 .markdown-body pre.md-code-block,
 .markdown-body code {
@@ -3778,8 +3784,23 @@ a:hover {
 .review-answer {
   margin: 4px 0 12px;
 }
+/* Fixed layout keeps the answer column at the table's width, so wide content
+   scrolls inside its own block (a table cell cannot scroll by itself) */
+.review-answer {
+  table-layout: fixed;
+}
 .review-answer th {
   width: 170px;
+}
+.review-answer td.markdown-body > :is(p, ul, ol, blockquote) {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Bullets sit inside the scrolling list rather than in its margin, where
+   they would be clipped */
+.review-answer td.markdown-body > :is(ul, ol) {
+  margin-left: 0;
+  padding-left: 20px;
 }
 .review-grade-question {
   margin: 0 0 6px;
