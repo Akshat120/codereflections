@@ -5,7 +5,7 @@
 import express from "express";
 import { httpServerHandler } from "cloudflare:node";
 import app from "./app.js";
-import { dbReady } from "./db.js"; // change to the same path server.js uses
+import { dbReady } from "./db/database.js"; // change to the same path server.js uses
 
 // Workers can't open network connections while the file loads, so the
 // database connects on the first request and the connection is reused.
