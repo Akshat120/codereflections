@@ -102,10 +102,13 @@ branch.
 
 ## Feature flags
 
-`ALLOW_EDITS=false` (server refuses edits/deletes, links hidden) and
-`SHOW_EDIT_LINKS=false` (links hidden only). Environment variables, on by
-default; set per deployment, so Vercel and Cloudflare can differ. See the
-README's Feature flags section and `src/featureFlags.js`.
+Per kind of edit / delete, each with a server flag (`ALLOW_…`, refuses the
+request and hides the link) and a link flag (`SHOW_…`, hides only):
+edit reflection, edit time, delete one problem, delete all. Group flags
+`ALLOW_EDITS`, `ALLOW_DELETES`, `SHOW_EDIT_LINKS`, `SHOW_DELETE_LINKS` cover a
+whole type. All on by default; environment variables, set per deployment.
+Full table in the README's Feature flags section; code in
+`src/featureFlags.js`.
 
 ## Open items
 

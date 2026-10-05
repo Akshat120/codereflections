@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { withTransaction } from "../db/database.js";
-import { requireEditsAllowed } from "../featureFlags.js";
+import { requireAllowed } from "../featureFlags.js";
 import {
   findAll as findAllReflections,
   deleteReflection,
@@ -86,7 +86,7 @@ manageRoutes.get("/problems", async (_req, res) => {
   }
 });
 
-manageRoutes.delete("/problems/:contestId/:index", requireEditsAllowed, async (req, res) => {
+manageRoutes.delete("/problems/:contestId/:index", requireAllowed("deleteProblem"), async (req, res) => {
   const contestId = parseContestId(req.params.contestId);
   const index = parseProblemIndex(req.params.index);
 
@@ -112,7 +112,7 @@ manageRoutes.delete("/problems/:contestId/:index", requireEditsAllowed, async (r
   }
 });
 
-manageRoutes.delete("/problems", requireEditsAllowed, async (_req, res) => {
+manageRoutes.delete("/problems", requireAllowed("deleteAll"), async (_req, res) => {
   try {
     await withTransaction(async session => {
       await deleteAllReflections({ session });
@@ -177,5 +177,5 @@ const updateProblemHandler = async (req, res) => {
   }
 };
 
-manageRoutes.patch("/problems/:contestId/:index", requireEditsAllowed, updateProblemHandler);
-manageRoutes.put("/problems/:contestId/:index", requireEditsAllowed, updateProblemHandler);
+manageRoutes.patch("/problems/:contestId/:index", requireAllowed("editTime"), updateProblemHandler);
+manageRoutes.put("/problems/:contestId/:index", requireAllowed("editTime"), updateProblemHandler);

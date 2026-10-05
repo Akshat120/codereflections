@@ -4601,9 +4601,12 @@ pre.prettyprint.cf-source {
 }
 
 
-/* Feature flag SHOW_EDIT_LINKS / ALLOW_EDITS off: hide edit and delete links
-   (index.html adds .no-edit-links from /api/session) */
-html.no-edit-links .edit-link,
-html.no-edit-links .edit-link-name { display: none !important; }
-.edit-link-name-text { display: none; }
-html.no-edit-links .edit-link-name-text { display: inline; }
+/* Feature flags (src/featureFlags.js): index.html adds html.hide-<kind> for
+   each edit / delete kind that is switched off, hiding its .flag-<kind> links */
+html.hide-edit-reflection .flag-edit-reflection,
+html.hide-edit-time .flag-edit-time,
+html.hide-delete-problem .flag-delete-problem,
+html.hide-delete-all .flag-delete-all { display: none !important; }
+/* The dashboard shows a problem's name as plain text instead of an edit link */
+.flag-edit-reflection-text { display: none; }
+html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }

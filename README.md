@@ -107,8 +107,7 @@ Optional environment variables:
 | `APP_PASSWORD_HASH` | Require a password to use the app (always required on Vercel). The value is an scrypt hash made by `npm run hash-password`, so the password itself is stored nowhere |
 | `APP_PASSWORD` | Older alternative: the password in plain text. Used only when `APP_PASSWORD_HASH` isn't set |
 | `SESSION_SECRET` | Optional key for signing login cookies (by default derived from the password hash) |
-| `ALLOW_EDITS` | Feature flag, on by default. `false` makes the server refuse to edit or delete saved problems and reflections (new ones can still be added) and hides the edit / delete links |
-| `SHOW_EDIT_LINKS` | Feature flag, on by default. `false` only hides the edit / delete links; edits still work through the API |
+| `ALLOW_*`, `SHOW_*` | Feature flags for editing and deleting, all on by default (see [Feature flags](#feature-flags)) |
 
 ### Data model
 
@@ -160,19 +159,39 @@ Only a backup: `npm run copy:cluster -- --backup-only` (saved in `backups/`, whi
 
 ## Feature flags
 
-Two environment variables switch editing and deleting off, without a code
-change. Set them where the other variables live (`.env` locally, Vercel →
-Settings → Environment Variables, Cloudflare → Variables and Secrets), then
-redeploy (or restart `npm run dev`). Leaving a flag out means "on".
+Environment variables switch each kind of edit and delete on or off, without
+a code change. Set them where the other variables live (`.env` locally,
+Vercel → Settings → Environment Variables, Cloudflare → Variables and
+Secrets), then redeploy (or restart `npm run dev`). A flag that isn't set is
+**on**; `false`, `0`, `off` or `no` turns it off.
 
-| Goal | Set |
+Each kind has two flags:
+
+- `ALLOW_…`: the server accepts the request. Off: the request is refused
+  **and** the link is hidden. This is the one that protects your data.
+- `SHOW_…`: the link or button is shown. Off: only hidden; the request
+  would still work.
+
+| Type | Kind | Server flag | Link flag | What it covers |
+|---|---|---|---|---|
+| Edit | Reflection | `ALLOW_EDIT_REFLECTION` | `SHOW_EDIT_REFLECTION` | Saving changes to an existing reflection. Links: "Edit" on a saved reflection, "Edit reflection" on Manage, problem names on the dashboard |
+| Edit | Time and date | `ALLOW_EDIT_TIME` | `SHOW_EDIT_TIME` | "Edit time" on Manage |
+| Delete | One problem | `ALLOW_DELETE_PROBLEM` | `SHOW_DELETE_PROBLEM` | "Delete" on a Manage row (the problem and its reflection) |
+| Delete | Everything | `ALLOW_DELETE_ALL` | `SHOW_DELETE_ALL` | "Delete All" on Manage |
+
+Group flags switch a whole type off at once:
+
+| Group flag | Same as turning off |
 |---|---|
-| Normal (default) | nothing |
-| Lock the journal: no edits or deletes, links hidden | `ALLOW_EDITS=false` |
-| Just a cleaner UI: links hidden, edits still possible | `SHOW_EDIT_LINKS=false` |
+| `ALLOW_EDITS=false` | `ALLOW_EDIT_REFLECTION`, `ALLOW_EDIT_TIME` |
+| `ALLOW_DELETES=false` | `ALLOW_DELETE_PROBLEM`, `ALLOW_DELETE_ALL` |
+| `SHOW_EDIT_LINKS=false` | `SHOW_EDIT_REFLECTION`, `SHOW_EDIT_TIME` |
+| `SHOW_DELETE_LINKS=false` | `SHOW_DELETE_PROBLEM`, `SHOW_DELETE_ALL` |
 
-The server enforces `ALLOW_EDITS`; hiding links alone is not a security
-measure. The flags are in `src/featureFlags.js`.
+Examples: `ALLOW_DELETE_ALL=false` keeps everything except "Delete All";
+`ALLOW_EDITS=false` + `ALLOW_DELETES=false` makes the journal add-only.
+Adding new reflections and problems is never affected. The flags are
+defined in `src/featureFlags.js`.
 
 ## Security
 
