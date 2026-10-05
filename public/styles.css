@@ -953,6 +953,27 @@ a:hover {
   color: #9b2017;
 }
 
+/* Status banners (Manage page): green for success, red for errors */
+.message-banner {
+  padding: 8px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.message-banner.success {
+  border-color: #9fd4ab;
+  background: #effaf1;
+  color: #146c2e;
+}
+
+.message-banner.error {
+  border-color: #e5a29b;
+  background: #fff0ee;
+  color: #c00000;
+}
+
 .hint {
   margin: 8px 0 0;
   font-size: 12px;
@@ -3130,8 +3151,8 @@ a:hover {
 }
 [data-theme="dark"] .message-banner.error {
   background-color: #391919 !important;
-  border-color: #692929 !important;
-  color: #ffa198 !important;
+  border-color: #8e2c2c !important;
+  color: #ff7b72 !important;
 }
 
 /* Rating colors in dark theme */
