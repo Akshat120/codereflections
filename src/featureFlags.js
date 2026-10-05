@@ -2,9 +2,10 @@
 // settings live: .env locally, Vercel → Environment Variables, Cloudflare →
 // Variables and Secrets). Every flag is on unless set to false / 0 / off / no.
 //
-// Each kind of edit or delete has two flags:
-//   ALLOW_<KIND>  the server accepts the request (off: refused, link hidden too)
-//   SHOW_<KIND>   its link / button is shown (off: hidden, request still works)
+// Each kind of edit or delete has two independent flags:
+//   ALLOW_<KIND>  the server accepts the request (off: refused; the link stays)
+//   SHOW_<KIND>   its link / button is shown (off: hidden; the request still works)
+// To lock an action and hide its link, turn both off.
 // and group flags switch a whole family off at once:
 //   ALLOW_EDITS, SHOW_EDIT_LINKS      every edit kind
 //   ALLOW_DELETES, SHOW_DELETE_LINKS  every delete kind
@@ -40,7 +41,7 @@ export function featureFlags() {
   const show = {};
   for (const [action, flags] of Object.entries(ACTIONS)) {
     allow[action] = allOn(flags.allow);
-    show[action] = allow[action] && allOn(flags.show);
+    show[action] = allOn(flags.show);
   }
   return { allow, show };
 }
