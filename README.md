@@ -168,9 +168,13 @@ Secrets), then redeploy (or restart `npm run dev`). A flag that isn't set is
 Each kind has two flags:
 
 - `ALLOW_…`: the server accepts the request. Off: the request is refused
-  **and** the link is hidden. This is the one that protects your data.
+  (the link stays, and shows the error when clicked). This is the one that
+  protects your data.
 - `SHOW_…`: the link or button is shown. Off: only hidden; the request
   would still work.
+
+The two are independent: to lock an action **and** hide its link, turn both
+off.
 
 | Type | Kind | Server flag | Link flag | What it covers |
 |---|---|---|---|---|
@@ -188,8 +192,10 @@ Group flags switch a whole type off at once:
 | `SHOW_EDIT_LINKS=false` | `SHOW_EDIT_REFLECTION`, `SHOW_EDIT_TIME` |
 | `SHOW_DELETE_LINKS=false` | `SHOW_DELETE_PROBLEM`, `SHOW_DELETE_ALL` |
 
-Examples: `ALLOW_DELETE_ALL=false` keeps everything except "Delete All";
-`ALLOW_EDITS=false` + `ALLOW_DELETES=false` makes the journal add-only.
+Examples: `ALLOW_DELETE_ALL=false` + `SHOW_DELETE_ALL=false` removes "Delete
+All" completely; `ALLOW_EDITS=false` + `ALLOW_DELETES=false` +
+`SHOW_EDIT_LINKS=false` + `SHOW_DELETE_LINKS=false` makes the journal
+add-only, with no edit or delete links.
 Adding new reflections and problems is never affected. The flags are
 defined in `src/featureFlags.js`.
 

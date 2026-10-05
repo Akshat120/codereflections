@@ -112,17 +112,19 @@ affected by any flag.
 
 | Type | Prefix | When off |
 |---|---|---|
-| Server (allow) | `ALLOW_…` | The server refuses the request **and** the link is hidden. Protects the data. |
+| Server (allow) | `ALLOW_…` | The server refuses the request; the link stays visible (clicking it shows the error). Protects the data. |
 | Link (show) | `SHOW_…` | The link / button is only hidden; the request still works. Cosmetic. |
+
+The two types are independent. To lock an action **and** hide its link, set both to `false`.
 
 ### Every flag
 
 | # | Flag | Type | Category | Kind | Effect when `false` |
 |---|---|---|---|---|---|
-| 1 | `ALLOW_EDIT_REFLECTION` | Server | Edit | Reflection | Saving changes to an existing reflection is refused; its links hidden |
-| 2 | `ALLOW_EDIT_TIME` | Server | Edit | Time and date | "Edit time" on Manage is refused; button hidden |
-| 3 | `ALLOW_DELETE_PROBLEM` | Server | Delete | One problem | "Delete" on a Manage row is refused; button hidden |
-| 4 | `ALLOW_DELETE_ALL` | Server | Delete | Everything | "Delete All" on Manage is refused; button hidden |
+| 1 | `ALLOW_EDIT_REFLECTION` | Server | Edit | Reflection | Saving changes to an existing reflection is refused |
+| 2 | `ALLOW_EDIT_TIME` | Server | Edit | Time and date | "Edit time" on Manage is refused |
+| 3 | `ALLOW_DELETE_PROBLEM` | Server | Delete | One problem | "Delete" on a Manage row is refused |
+| 4 | `ALLOW_DELETE_ALL` | Server | Delete | Everything | "Delete All" on Manage is refused |
 | 5 | `SHOW_EDIT_REFLECTION` | Link | Edit | Reflection | Hides "Edit" on a saved reflection, "Edit reflection" on Manage; dashboard problem names become plain text |
 | 6 | `SHOW_EDIT_TIME` | Link | Edit | Time and date | Hides "Edit time" on Manage |
 | 7 | `SHOW_DELETE_PROBLEM` | Link | Delete | One problem | Hides "Delete" on Manage rows |
@@ -141,19 +143,19 @@ affected by any flag.
 
 - An action is allowed only if its own `ALLOW_` flag **and** its group flag
   are on.
-- A link is shown only if the action is allowed **and** its own `SHOW_` flag
-  **and** its group `SHOW_` flag are on.
+- A link is shown only if its own `SHOW_` flag **and** its group `SHOW_` flag
+  are on. `ALLOW_` flags never hide links.
 
 ### Common setups
 
 | Goal | Set |
 |---|---|
 | Normal (default) | nothing |
-| Guard against wiping everything | `ALLOW_DELETE_ALL=false` |
-| No deletes at all | `ALLOW_DELETES=false` |
-| Add-only journal (no edits, no deletes) | `ALLOW_EDITS=false`, `ALLOW_DELETES=false` |
+| Guard against wiping everything | `ALLOW_DELETE_ALL=false`, `SHOW_DELETE_ALL=false` |
+| No deletes at all | `ALLOW_DELETES=false`, `SHOW_DELETE_LINKS=false` |
+| Add-only journal (no edits, no deletes) | `ALLOW_EDITS=false`, `ALLOW_DELETES=false`, `SHOW_EDIT_LINKS=false`, `SHOW_DELETE_LINKS=false` |
 | Cleaner screen, everything still works | `SHOW_EDIT_LINKS=false`, `SHOW_DELETE_LINKS=false` |
-| Lock Cloudflare, keep Vercel editable | set the `ALLOW_` flags on Cloudflare only |
+| Lock Cloudflare, keep Vercel editable | set the `ALLOW_` (and `SHOW_`) flags on Cloudflare only |
 
 ## Open items
 
