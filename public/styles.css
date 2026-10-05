@@ -3563,7 +3563,8 @@ a:hover {
   color: #777;
 }
 /* ==========================================================================
-   Phone/tablet menu: a hamburger button that drops the links down as a list
+   Phone/tablet menu: a hamburger button that drops the links down as a grid
+   of tiles, 3 per row (2 on very narrow screens)
    ========================================================================== */
 @media (max-width: 860px) {
   .main-nav {
@@ -3628,25 +3629,33 @@ a:hover {
     display: none;
     order: 3;
     flex: 1 0 100%;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    margin: 0 -8px;
-    padding: 4px 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 -4px;
+    padding: 8px 0 6px;
     border-top: 1px solid #b9b9b9;
   }
   .nav-open .nav-links {
-    display: flex;
+    display: grid;
   }
   .nav-links a {
-    display: block;
-    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 40px;
+    padding: 6px 4px;
     margin-bottom: 0;
-    border-bottom: 0;
-    border-left: 3px solid transparent;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .nav-links a.active {
-    border-bottom: 0;
-    border-left-color: var(--cf-accent);
+    border-color: var(--cf-accent);
+    box-shadow: inset 0 -3px 0 var(--cf-accent);
   }
   [data-theme="dark"] .nav-toggle {
     color: #e0e0e0;
@@ -3654,8 +3663,30 @@ a:hover {
   [data-theme="dark"] .nav-links {
     border-top-color: #383c40;
   }
+  [data-theme="dark"] .nav-links a {
+    border-color: #383c40;
+  }
   [data-theme="dark"] .nav-links a.active {
-    border-left-color: #58a6ff;
+    border-color: #58a6ff;
+    box-shadow: inset 0 -3px 0 #58a6ff;
+  }
+}
+@media (max-width: 480px) {
+  .nav-links a {
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+}
+@media (max-width: 400px) {
+  .nav-links a {
+    gap: 2px;
+    padding: 6px 2px;
+    font-size: 13px;
+  }
+}
+@media (max-width: 359px) {
+  .nav-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
