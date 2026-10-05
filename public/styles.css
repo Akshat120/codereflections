@@ -4600,3 +4600,13 @@ pre.prettyprint.cf-source {
   border-color: #388bfd !important;
 }
 
+
+/* Feature flags (src/featureFlags.js): index.html adds html.hide-<kind> for
+   each edit / delete kind that is switched off, hiding its .flag-<kind> links */
+html.hide-edit-reflection .flag-edit-reflection,
+html.hide-edit-time .flag-edit-time,
+html.hide-delete-problem .flag-delete-problem,
+html.hide-delete-all .flag-delete-all { display: none !important; }
+/* The dashboard shows a problem's name as plain text instead of an edit link */
+.flag-edit-reflection-text { display: none; }
+html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
