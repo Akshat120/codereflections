@@ -7,6 +7,7 @@ import {
 } from "../repositories/reflectionRepository.js";
 import { findQueueProblem, removeQueueProblem } from "../repositories/queueRepository.js";
 import { STUCK_REASON_KEYS } from "../stuckReasons.js";
+import { EDITS_OFF_MESSAGE, featureFlags } from "../featureFlags.js";
 import { isHttpUrl, parseTags } from "../validation.js";
 
 export const reflectionRoutes = Router();
@@ -152,6 +153,9 @@ reflectionRoutes.post("/", async (req, res) => {
 
   try {
     const isEdit = Boolean(await findByProblem(input.contestId, input.problemIndex));
+    if (isEdit && !featureFlags().editsAllowed) {
+      return res.status(403).json({ error: EDITS_OFF_MESSAGE });
+    }
     if (!isEdit && !(await findQueueProblem(input.contestId, input.problemIndex))) {
       return res.status(409).json({
         error: "This problem is no longer in your practice queue."

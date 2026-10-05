@@ -107,6 +107,8 @@ Optional environment variables:
 | `APP_PASSWORD_HASH` | Require a password to use the app (always required on Vercel). The value is an scrypt hash made by `npm run hash-password`, so the password itself is stored nowhere |
 | `APP_PASSWORD` | Older alternative: the password in plain text. Used only when `APP_PASSWORD_HASH` isn't set |
 | `SESSION_SECRET` | Optional key for signing login cookies (by default derived from the password hash) |
+| `ALLOW_EDITS` | Feature flag, on by default. `false` makes the server refuse to edit or delete saved problems and reflections (new ones can still be added) and hides the edit / delete links |
+| `SHOW_EDIT_LINKS` | Feature flag, on by default. `false` only hides the edit / delete links; edits still work through the API |
 
 ### Data model
 
@@ -155,6 +157,22 @@ Free (M0) Atlas clusters can't change region, so moving one means creating a new
 3. In Vercel, set `MONGODB_URI` to the new cluster and redeploy. Once it works, delete the old cluster.
 
 Only a backup: `npm run copy:cluster -- --backup-only` (saved in `backups/`, which git ignores: it's your whole journal). Push a backup to a cluster: `npm run copy:cluster -- --restore backups/<file>.json`.
+
+## Feature flags
+
+Two environment variables switch editing and deleting off, without a code
+change. Set them where the other variables live (`.env` locally, Vercel →
+Settings → Environment Variables, Cloudflare → Variables and Secrets), then
+redeploy (or restart `npm run dev`). Leaving a flag out means "on".
+
+| Goal | Set |
+|---|---|
+| Normal (default) | nothing |
+| Lock the journal: no edits or deletes, links hidden | `ALLOW_EDITS=false` |
+| Just a cleaner UI: links hidden, edits still possible | `SHOW_EDIT_LINKS=false` |
+
+The server enforces `ALLOW_EDITS`; hiding links alone is not a security
+measure. The flags are in `src/featureFlags.js`.
 
 ## Security
 

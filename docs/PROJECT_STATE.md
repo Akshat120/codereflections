@@ -100,6 +100,13 @@ Both deployments run the same code from `main`, and should point at the
 Not merged: a demo mode, kept as work in progress on the `feature/demo-mode`
 branch.
 
+## Feature flags
+
+`ALLOW_EDITS=false` (server refuses edits/deletes, links hidden) and
+`SHOW_EDIT_LINKS=false` (links hidden only). Environment variables, on by
+default; set per deployment, so Vercel and Cloudflare can differ. See the
+README's Feature flags section and `src/featureFlags.js`.
+
 ## Open items
 
 - **Cloudflare database connection**: confirm the Worker reaches Atlas once the

@@ -2082,7 +2082,7 @@ function renderDashboard(items) {
               <td class="dash-col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener">${problemCode(item)}</a></td>
               <td>
                 <div class="dash-recent-head">
-                  <a href="/edit-reflection?id=${item.id}" data-route="edit-reflection">${escapeHtml(item.problemName)}</a>
+                  <a class="edit-link-name" href="/edit-reflection?id=${item.id}" data-route="edit-reflection">${escapeHtml(item.problemName)}</a><span class="edit-link-name-text">${escapeHtml(item.problemName)}</span>
                   <span class="${ratingColorClass(item.rating)}">${item.rating ?? "—"}</span>
                   <span class="dash-muted">· solved ${formatSavedDate(item.createdAt || item.updatedAt)}</span>
                 </div>
@@ -3604,7 +3604,7 @@ function renderManageTableRows(problems, { searching = false } = {}) {
         ${formatSolvedAtDate(solvedDate)}
       </td>
       <td class="col-row-actions">
-        ${p.journalId ? `<a class="cf-row-action" href="/edit-reflection?id=${encodeURIComponent(p.journalId)}" data-route="edit-reflection" title="Edit the written reflection">Edit reflection</a> ` : ""}<button type="button" class="cf-row-action btn-edit-db-problem" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" title="Edit time spent and date for this problem">Edit time</button> <button type="button" class="cf-row-action btn-toggle-problem-time ${isHidden ? "is-hidden" : ""}" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" title="${isHidden ? "Show time for this problem" : "Hide time for this problem everywhere"}">${isHidden ? "Show time" : "Hide time"}</button> <button type="button" class="cf-row-action is-danger btn-delete-db-problem" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" data-name="${escapeHtml(p.name)}" title="Permanently delete this problem">Delete</button>
+        ${p.journalId ? `<a class="cf-row-action edit-link" href="/edit-reflection?id=${encodeURIComponent(p.journalId)}" data-route="edit-reflection" title="Edit the written reflection">Edit reflection</a> ` : ""}<button type="button" class="cf-row-action edit-link btn-edit-db-problem" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" title="Edit time spent and date for this problem">Edit time</button> <button type="button" class="cf-row-action btn-toggle-problem-time ${isHidden ? "is-hidden" : ""}" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" title="${isHidden ? "Show time for this problem" : "Hide time for this problem everywhere"}">${isHidden ? "Show time" : "Hide time"}</button> <button type="button" class="cf-row-action edit-link is-danger btn-delete-db-problem" data-contest="${escapeAttribute(p.contestId)}" data-index="${escapeAttribute(p.index)}" data-name="${escapeHtml(p.name)}" title="Permanently delete this problem">Delete</button>
       </td>
     </tr>
   `;

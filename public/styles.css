@@ -4600,3 +4600,10 @@ pre.prettyprint.cf-source {
   border-color: #388bfd !important;
 }
 
+
+/* Feature flag SHOW_EDIT_LINKS / ALLOW_EDITS off: hide edit and delete links
+   (index.html adds .no-edit-links from /api/session) */
+html.no-edit-links .edit-link,
+html.no-edit-links .edit-link-name { display: none !important; }
+.edit-link-name-text { display: none; }
+html.no-edit-links .edit-link-name-text { display: inline; }

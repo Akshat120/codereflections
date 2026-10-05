@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { blockedMinutes, clearFailures, clientIp, recordFailure } from "./loginLimiter.js";
+import { featureFlags } from "./featureFlags.js";
 import { parseHash, verifyPassword } from "./passwordHash.js";
 
 // Single-user password login (always required on Vercel). A successful login
@@ -115,7 +116,7 @@ authRoutes.get("/session", (req, res) => {
   // visitor to the login page, which shows what to fix, not to the app
   const configError = authConfigError();
   if (configError) return res.json({ authEnabled: true, loggedIn: false, error: configError });
-  res.json({ authEnabled: authEnabled(), loggedIn: isLoggedIn(req) });
+  res.json({ authEnabled: authEnabled(), loggedIn: isLoggedIn(req), features: featureFlags() });
 });
 
 authRoutes.post("/login", async (req, res) => {
