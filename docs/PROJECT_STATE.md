@@ -102,13 +102,58 @@ branch.
 
 ## Feature flags
 
-Per kind of edit / delete, each with a server flag (`ALLOW_…`, refuses the
-request and hides the link) and a link flag (`SHOW_…`, hides only):
-edit reflection, edit time, delete one problem, delete all. Group flags
-`ALLOW_EDITS`, `ALLOW_DELETES`, `SHOW_EDIT_LINKS`, `SHOW_DELETE_LINKS` cover a
-whole type. All on by default; environment variables, set per deployment.
-Full table in the README's Feature flags section; code in
-`src/featureFlags.js`.
+Environment variables, set per deployment (`.env` locally, Vercel →
+Environment Variables, Cloudflare → Variables and Secrets), then redeploy.
+A flag that isn't set is **on**; `false`, `0`, `off` or `no` turns it off.
+Code: `src/featureFlags.js`. Adding new reflections and problems is never
+affected by any flag.
+
+### Flag types
+
+| Type | Prefix | When off |
+|---|---|---|
+| Server (allow) | `ALLOW_…` | The server refuses the request **and** the link is hidden. Protects the data. |
+| Link (show) | `SHOW_…` | The link / button is only hidden; the request still works. Cosmetic. |
+
+### Every flag
+
+| # | Flag | Type | Category | Kind | Effect when `false` |
+|---|---|---|---|---|---|
+| 1 | `ALLOW_EDIT_REFLECTION` | Server | Edit | Reflection | Saving changes to an existing reflection is refused; its links hidden |
+| 2 | `ALLOW_EDIT_TIME` | Server | Edit | Time and date | "Edit time" on Manage is refused; button hidden |
+| 3 | `ALLOW_DELETE_PROBLEM` | Server | Delete | One problem | "Delete" on a Manage row is refused; button hidden |
+| 4 | `ALLOW_DELETE_ALL` | Server | Delete | Everything | "Delete All" on Manage is refused; button hidden |
+| 5 | `SHOW_EDIT_REFLECTION` | Link | Edit | Reflection | Hides "Edit" on a saved reflection, "Edit reflection" on Manage; dashboard problem names become plain text |
+| 6 | `SHOW_EDIT_TIME` | Link | Edit | Time and date | Hides "Edit time" on Manage |
+| 7 | `SHOW_DELETE_PROBLEM` | Link | Delete | One problem | Hides "Delete" on Manage rows |
+| 8 | `SHOW_DELETE_ALL` | Link | Delete | Everything | Hides "Delete All" on Manage |
+
+### Group flags
+
+| # | Flag | Type | Same as setting `false` |
+|---|---|---|---|
+| 9 | `ALLOW_EDITS` | Server | `ALLOW_EDIT_REFLECTION`, `ALLOW_EDIT_TIME` |
+| 10 | `ALLOW_DELETES` | Server | `ALLOW_DELETE_PROBLEM`, `ALLOW_DELETE_ALL` |
+| 11 | `SHOW_EDIT_LINKS` | Link | `SHOW_EDIT_REFLECTION`, `SHOW_EDIT_TIME` |
+| 12 | `SHOW_DELETE_LINKS` | Link | `SHOW_DELETE_PROBLEM`, `SHOW_DELETE_ALL` |
+
+### How they combine
+
+- An action is allowed only if its own `ALLOW_` flag **and** its group flag
+  are on.
+- A link is shown only if the action is allowed **and** its own `SHOW_` flag
+  **and** its group `SHOW_` flag are on.
+
+### Common setups
+
+| Goal | Set |
+|---|---|
+| Normal (default) | nothing |
+| Guard against wiping everything | `ALLOW_DELETE_ALL=false` |
+| No deletes at all | `ALLOW_DELETES=false` |
+| Add-only journal (no edits, no deletes) | `ALLOW_EDITS=false`, `ALLOW_DELETES=false` |
+| Cleaner screen, everything still works | `SHOW_EDIT_LINKS=false`, `SHOW_DELETE_LINKS=false` |
+| Lock Cloudflare, keep Vercel editable | set the `ALLOW_` flags on Cloudflare only |
 
 ## Open items
 
