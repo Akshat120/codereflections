@@ -4763,7 +4763,7 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 .heat-legend .heat-cell { cursor: help; }
 .heat-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px 16px;
   margin-top: 14px;
 }
@@ -4817,7 +4817,7 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 }
 .heat-tip-empty { color: #d0d7de; }
 @media (max-width: 600px) {
-  .heat-stats { gap: 10px 8px; }
+  .heat-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 8px; }
   .heat-stat b { font-size: 15px; }
   .heat-stat span { font-size: 11px; }
 }
