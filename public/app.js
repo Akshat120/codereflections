@@ -2263,11 +2263,26 @@ function renderHeatLegend(values, metric) {
       `<span class="heat-cell heat-l${level}" title="${escapeAttribute(titles[level] || "")}"></span>`).join("")}<span>More</span>`;
 }
 
-// Hover (or tap / keyboard focus) a day: its totals and the problems solved
+// Hover (or tap / keyboard focus) a day: its totals and the problems solved.
+// The box fades and slides in from the day, glides to the next day while
+// open, and its arrow points at the day; the day itself grows slightly.
 function initHeatTooltip(grid) {
   const tip = document.getElementById("heat-tip");
-  const hide = () => tip.classList.add("hidden");
+  let activeCell = null;
+  const setActive = cell => {
+    if (activeCell === cell) return;
+    activeCell?.classList.remove("is-active");
+    activeCell = cell;
+    cell?.classList.add("is-active");
+  };
+  const hide = () => {
+    tip.classList.remove("is-open");
+    tip.setAttribute("aria-hidden", "true");
+    setActive(null);
+  };
   const show = cell => {
+    const wasOpen = tip.classList.contains("is-open");
+    setActive(cell);
     const day = heatDays.get(cell.dataset.day);
     const [y, m, d] = cell.dataset.day.split("-").map(Number);
     const date = new Date(y, m - 1, d).toLocaleDateString(undefined, {
@@ -2282,15 +2297,28 @@ function initHeatTooltip(grid) {
           `<li><span>${problemCode(item)} · ${escapeHtml(item.problemName || "")}</span><b>${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</b></li>`).join("")}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
     tip.innerHTML = `<div class="heat-tip-date">${date}</div>${rows}`;
-    tip.classList.remove("hidden");
+
+    // Place it above the day (below when there's no room), kept on screen.
+    // offsetWidth/Height ignore the entrance scale, so the size is exact.
     const rect = cell.getBoundingClientRect();
-    const tipRect = tip.getBoundingClientRect();
-    let left = rect.left + rect.width / 2 - tipRect.width / 2;
-    left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
-    let top = rect.top - tipRect.height - 8;
-    if (top < 8) top = rect.bottom + 8;
+    const width = tip.offsetWidth;
+    const height = tip.offsetHeight;
+    const center = rect.left + rect.width / 2;
+    let left = Math.max(8, Math.min(center - width / 2, window.innerWidth - width - 8));
+    const below = rect.top - height - 10 < 8;
+    const top = below ? rect.bottom + 10 : rect.top - height - 10;
+    tip.classList.toggle("is-below", below);
+    tip.style.setProperty("--arrow-x", `${Math.max(10, Math.min(width - 10, center - left))}px`);
+
+    // Opening: jump to the spot, then animate in. Already open: glide there.
+    tip.classList.toggle("is-moving", wasOpen);
     tip.style.left = `${left}px`;
     tip.style.top = `${top}px`;
+    if (!wasOpen) {
+      void tip.offsetWidth; // start the entrance from the new spot
+      tip.classList.add("is-open");
+    }
+    tip.setAttribute("aria-hidden", "false");
   };
   grid.addEventListener("mouseover", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });
   grid.addEventListener("focusin", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });

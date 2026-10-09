@@ -4803,8 +4803,65 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   color: #fff;
   font-size: 12px;
   line-height: 1.4;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
   pointer-events: none;
+  /* Closed: invisible, a little smaller and nudged toward the day */
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(6px) scale(0.96);
+  transform-origin: var(--arrow-x, 50%) 100%;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+}
+.heat-tip.is-below {
+  transform: translateY(-6px) scale(0.96);
+  transform-origin: var(--arrow-x, 50%) 0;
+}
+.heat-tip.is-open {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.16s ease-out, transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1.2), visibility 0s;
+}
+/* Moving from one day to the next while open: glide */
+.heat-tip.is-open.is-moving {
+  transition: left 0.14s ease-out, top 0.14s ease-out, opacity 0.16s, transform 0.16s;
+}
+/* Arrow pointing at the day */
+.heat-tip::after {
+  content: "";
+  position: absolute;
+  left: var(--arrow-x, 50%);
+  top: 100%;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: #24292f;
+}
+.heat-tip.is-below::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: #24292f;
+}
+/* The day being shown grows slightly, with a ring */
+.heat-grid .heat-cell {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.heat-grid .heat-cell.is-active {
+  position: relative;
+  z-index: 1;
+  transform: scale(1.35);
+  box-shadow: 0 0 0 1.5px var(--heat-bg, #fff), 0 0 0 3px #57606a;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heat-tip,
+  .heat-tip.is-below,
+  .heat-tip.is-open,
+  .heat-tip.is-open.is-moving,
+  .heat-grid .heat-cell {
+    transition: none;
+    transform: none;
+  }
+  .heat-grid .heat-cell.is-active { transform: none; }
 }
 .heat-tip-date {
   margin-bottom: 4px;
@@ -4855,6 +4912,9 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   background: #f0f3f6;
   color: #1f2328;
 }
+[data-theme="dark"] .heat-tip::after { border-top-color: #f0f3f6; }
+[data-theme="dark"] .heat-tip.is-below::after { border-top-color: transparent; border-bottom-color: #f0f3f6; }
+[data-theme="dark"] .heat-grid .heat-cell.is-active { box-shadow: 0 0 0 1.5px var(--heat-bg), 0 0 0 3px #93abcd; }
 [data-theme="dark"] .heat-tip-list,
 [data-theme="dark"] .heat-tip-empty { color: #57606a; }
 [data-theme="dark"] .heat-tip-list { border-top-color: rgba(0, 0, 0, 0.15); }
