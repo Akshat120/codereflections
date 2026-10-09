@@ -709,12 +709,18 @@ function navigate(path, { replace = false } = {}) {
     const params = new URLSearchParams(search || "");
     const reason = params.get("reason") || "";
     const tag = params.get("tag") || "";
-    if (reason || tag) {
+    const searchFor = (params.get("search") || "").trim();
+    if (reason || tag || searchFor) {
       // A link to a specific list (from the full-list pages or dashboard) shows
       // exactly that list, so earlier filters are cleared; sort order is kept.
       resetProgressFilters({ keepUrl: true, keepSort: true });
       if (stuckReasonLabels.has(reason) || STUCK_REASONS.some(r => r.key === reason)) {
         journalFilterState.reason = reason;
+      }
+      if (searchFor) {
+        journalFilterState.search = searchFor;
+        const searchInput = document.getElementById("progress-search-input");
+        if (searchInput) searchInput.value = searchFor;
       }
       if (tag) {
         journalFilterState.tag = tag;
@@ -2275,12 +2281,29 @@ function initHeatTooltip(grid) {
     activeCell = cell;
     cell?.classList.add("is-active");
   };
+  let hideTimer = null;
+  // Clicking (or tapping) a day pins its card: it stays open, ignoring hover
+  // over other days, so the pointer can reach the problem codes in it.
+  let pinned = null;
+  const canHover = window.matchMedia("(hover: hover)").matches;
   const hide = () => {
+    clearTimeout(hideTimer);
+    pinned = null;
+    tip.classList.remove("is-pinned");
     tip.classList.remove("is-open");
     tip.setAttribute("aria-hidden", "true");
     setActive(null);
   };
+  // A short grace period lets the pointer cross from the day to the card
+  // (whose problem codes are links to Progress) without the card closing
+  const hideSoon = () => {
+    if (pinned) return;
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hide, 180);
+  };
+  const keepOpen = () => clearTimeout(hideTimer);
   const show = cell => {
+    keepOpen();
     const wasOpen = tip.classList.contains("is-open");
     setActive(cell);
     const day = heatDays.get(cell.dataset.day);
@@ -2292,10 +2315,14 @@ function initHeatTooltip(grid) {
     const summary = day
       ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}</div>
         <ul class="heat-tip-list">${day.items.slice(0, MAX_LISTED).map(({ item, hidden }) =>
-          `<li><span class="heat-tip-code">${problemCode(item)}</span><span class="heat-tip-name">${escapeHtml(item.problemName || "")}</span><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
+          `<li><a class="heat-tip-code" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${problemCode(item)}</a><span class="heat-tip-name">${escapeHtml(item.problemName || "")}</span><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
             ? `<li class="heat-tip-more">+${day.items.length - MAX_LISTED} more</li>` : ""}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
-    tip.innerHTML = `<div class="heat-tip-head"><span class="heat-tip-swatch" style="background:${getComputedStyle(cell).backgroundColor}"></span>${date}</div>${summary}`;
+    const hint = !day ? ""
+      : pinned === cell ? `<div class="heat-tip-hint">Click a problem code to open it on Progress</div>`
+      : canHover ? `<div class="heat-tip-hint">Click the day to keep this open</div>` : "";
+    tip.classList.toggle("is-pinned", pinned === cell);
+    tip.innerHTML = `<div class="heat-tip-head"><span class="heat-tip-swatch" style="background:${getComputedStyle(cell).backgroundColor}"></span>${date}</div>${summary}${hint}`;
 
     // Place it above the day (below when there's no room), kept on screen.
     // offsetWidth/Height ignore the entrance scale, so the size is exact.
@@ -2318,14 +2345,26 @@ function initHeatTooltip(grid) {
     }
     tip.setAttribute("aria-hidden", "false");
   };
-  grid.addEventListener("mouseover", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });
-  grid.addEventListener("focusin", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });
-  grid.addEventListener("click", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });
-  grid.addEventListener("mouseleave", hide);
-  grid.addEventListener("focusout", hide);
+  grid.addEventListener("mouseover", e => { const cell = e.target.closest(".heat-cell"); if (cell && !pinned) show(cell); });
+  grid.addEventListener("focusin", e => { const cell = e.target.closest(".heat-cell"); if (cell && !pinned) show(cell); });
+  grid.addEventListener("click", e => {
+    const cell = e.target.closest(".heat-cell");
+    if (!cell) return;
+    if (pinned === cell) { hide(); return; } // clicking the pinned day again closes it
+    pinned = cell;
+    show(cell);
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && tip.classList.contains("is-open")) hide(); });
+  grid.addEventListener("mouseleave", hideSoon);
+  grid.addEventListener("focusout", e => { if (!tip.contains(e.relatedTarget)) hideSoon(); });
+  tip.addEventListener("mouseenter", keepOpen);
+  tip.addEventListener("mouseleave", hideSoon);
+  tip.addEventListener("focusin", keepOpen);
+  tip.addEventListener("focusout", e => { if (!tip.contains(e.relatedTarget)) hideSoon(); });
+  tip.addEventListener("click", e => { if (e.target.closest("a")) hide(); });
   document.getElementById("heat-scroll").addEventListener("scroll", hide, { passive: true });
   window.addEventListener("scroll", hide, { passive: true });
-  document.addEventListener("click", e => { if (!e.target.closest(".heat-cell")) hide(); });
+  document.addEventListener("click", e => { if (!e.target.closest(".heat-cell, #heat-tip")) hide(); });
 }
 
 // Problems, time, active days and longest streak for the period the grid

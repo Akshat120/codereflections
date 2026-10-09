@@ -4829,6 +4829,7 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   visibility: visible;
   opacity: 1;
   transform: none;
+  pointer-events: auto;
   transition: opacity 0.14s ease-out, transform 0.14s ease-out, visibility 0s;
 }
 .heat-tip-head {
@@ -4870,12 +4871,21 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   gap: 8px;
 }
 .heat-tip-code {
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--tip-chip);
   border: 1px solid var(--tip-border);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
+}
+.heat-tip-code:hover,
+.heat-tip-code:focus-visible {
+  border-color: currentColor;
+  text-decoration: underline;
 }
 .heat-tip-name {
   overflow: hidden;
@@ -4888,6 +4898,11 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 }
 .heat-tip-more {
   color: var(--tip-muted);
+}
+.heat-tip-hint {
+  margin-top: 8px;
+  color: var(--tip-muted);
+  font-size: 11px;
 }
 /* The day being shown: a thin ring, like GitHub's */
 .heat-grid .heat-cell.is-active {
