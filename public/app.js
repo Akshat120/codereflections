@@ -2315,11 +2315,11 @@ function initHeatTooltip(grid) {
     const summary = day
       ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}</div>
         <ul class="heat-tip-list">${day.items.slice(0, MAX_LISTED).map(({ item, hidden }) =>
-          `<li><a class="heat-tip-code" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${problemCode(item)}</a><span class="heat-tip-name">${escapeHtml(item.problemName || "")}</span><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
+          `<li><a class="heat-tip-code" href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}<span class="heat-tip-ext" aria-hidden="true">↗</span></a><a class="heat-tip-name" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName || "")}</a><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
             ? `<li class="heat-tip-more">+${day.items.length - MAX_LISTED} more</li>` : ""}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
     const hint = !day ? ""
-      : pinned === cell ? `<div class="heat-tip-hint">Click a problem code to open it on Progress</div>`
+      : pinned === cell ? `<div class="heat-tip-hint">Code opens Codeforces · name opens it on Progress</div>`
       : canHover ? `<div class="heat-tip-hint">Click the day to keep this open</div>` : "";
     tip.classList.toggle("is-pinned", pinned === cell);
     tip.innerHTML = `<div class="heat-tip-head"><span class="heat-tip-swatch" style="background:${getComputedStyle(cell).backgroundColor}"></span>${date}</div>${summary}${hint}`;
@@ -2361,7 +2361,9 @@ function initHeatTooltip(grid) {
   tip.addEventListener("mouseleave", hideSoon);
   tip.addEventListener("focusin", keepOpen);
   tip.addEventListener("focusout", e => { if (!tip.contains(e.relatedTarget)) hideSoon(); });
-  tip.addEventListener("click", e => { if (e.target.closest("a")) hide(); });
+  // Progress links leave the dashboard, so close; Codeforces opens a new tab,
+  // so the card stays for opening more
+  tip.addEventListener("click", e => { if (e.target.closest("a[data-route]")) hide(); });
   document.getElementById("heat-scroll").addEventListener("scroll", hide, { passive: true });
   window.addEventListener("scroll", hide, { passive: true });
   document.addEventListener("click", e => { if (!e.target.closest(".heat-cell, #heat-tip")) hide(); });
@@ -2440,10 +2442,10 @@ function renderDashboard(items) {
         <tbody>
           ${recent.map(item => `
             <tr>
-              <td class="dash-col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener">${problemCode(item)}</a></td>
+              <td class="dash-col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}<span class="dash-ext" aria-hidden="true">↗</span></a></td>
               <td>
                 <div class="dash-recent-head">
-                  <a class="flag-edit-reflection" href="/edit-reflection?id=${item.id}" data-route="edit-reflection">${escapeHtml(item.problemName)}</a><span class="flag-edit-reflection-text">${escapeHtml(item.problemName)}</span>
+                  <a class="dash-name-link" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName)}</a>
                   <span class="${ratingColorClass(item.rating)}">${item.rating ?? "—"}</span>
                   <span class="dash-muted">· solved ${formatSavedDate(item.createdAt || item.updatedAt)}</span>
                 </div>

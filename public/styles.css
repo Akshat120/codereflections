@@ -4673,9 +4673,6 @@ html.hide-edit-reflection .flag-edit-reflection,
 html.hide-edit-time .flag-edit-time,
 html.hide-delete-problem .flag-delete-problem,
 html.hide-delete-all .flag-delete-all { display: none !important; }
-/* The dashboard shows a problem's name as plain text instead of an edit link */
-.flag-edit-reflection-text { display: none; }
-html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 
 /* ==========================================================================
    Dashboard activity heatmap (GitHub-style; colours are GitHub's greens)
@@ -4887,10 +4884,24 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   border-color: currentColor;
   text-decoration: underline;
 }
-.heat-tip-name {
+/* Problem name: opens it on Progress. Text-coloured (the code is the blue
+   link, to Codeforces), underlined on hover */
+#heat-tip a.heat-tip-name,
+[data-theme="dark"] #heat-tip a.heat-tip-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--tip-text) !important;
+  text-decoration: none;
+}
+#heat-tip a.heat-tip-name:hover,
+#heat-tip a.heat-tip-name:focus-visible {
+  text-decoration: underline;
+}
+.heat-tip-ext {
+  margin-left: 3px;
+  color: var(--tip-muted);
+  font-size: 10px;
 }
 .heat-tip-time {
   color: var(--tip-muted);
@@ -4965,3 +4976,21 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 [data-theme="dark"] #dash-date { color: #d5d7d6 !important; }
 [data-theme="dark"] .caption,
 [data-theme="dark"] .pay-attention-widget .caption { background-color: #161b1c !important; }
+
+/* Recent reflections: the code opens Codeforces (blue, with a small ↗),
+   the name opens it on Progress (text-coloured, underlined on hover) */
+.dash-ext {
+  margin-left: 2px;
+  font-size: 10px;
+  opacity: 0.75;
+}
+#dash-recent a.dash-name-link,
+[data-theme="dark"] #dash-recent a.dash-name-link {
+  color: inherit !important;
+  font-weight: bold;
+  text-decoration: none;
+}
+#dash-recent a.dash-name-link:hover,
+#dash-recent a.dash-name-link:focus-visible {
+  text-decoration: underline;
+}

@@ -178,7 +178,7 @@ off.
 
 | Type | Kind | Server flag | Link flag | What it covers |
 |---|---|---|---|---|
-| Edit | Reflection | `ALLOW_EDIT_REFLECTION` | `SHOW_EDIT_REFLECTION` | Saving changes to an existing reflection. Links: "Edit" on a saved reflection, "Edit reflection" on Manage, problem names on the dashboard |
+| Edit | Reflection | `ALLOW_EDIT_REFLECTION` | `SHOW_EDIT_REFLECTION` | Saving changes to an existing reflection. Links: "Edit" on a saved reflection, "Edit reflection" on Manage |
 | Edit | Time and date | `ALLOW_EDIT_TIME` | `SHOW_EDIT_TIME` | "Edit time" on Manage |
 | Delete | One problem | `ALLOW_DELETE_PROBLEM` | `SHOW_DELETE_PROBLEM` | "Delete" on a Manage row (the problem and its reflection) |
 | Delete | Everything | `ALLOW_DELETE_ALL` | `SHOW_DELETE_ALL` | "Delete All" on Manage |
