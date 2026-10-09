@@ -2036,9 +2036,285 @@ function renderWeakSpotsPage(items) {
     : `<div class="dash-empty dash-muted">No tags yet.</div>`;
 }
 
+// Activity heatmap on the dashboard: one square per day (columns are weeks,
+// Sunday on top), coloured by problems solved or time spent that day. Like
+// GitHub, the four greens are relative: they split the active days of the
+// period shown into quarters, so the busiest days are always the darkest.
+const HEAT_KEYS = { metric: "cr_heat_metric", period: "cr_heat_period" };
+const DAY_MS = 24 * 60 * 60 * 1000;
+let heatItems = [];
+let heatDays = new Map();
+
+function heatPref(key, fallback) {
+  try { return localStorage.getItem(key) || fallback; } catch (_) { return fallback; }
+}
+
+function setHeatPref(key, value) {
+  try { localStorage.setItem(key, value); } catch (_) {}
+}
+
+// Local calendar day, e.g. "2026-10-05"
+function dayKey(date) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+// { problems, seconds, items } per day. Time of problems whose time is hidden
+// (Manage → Hide time) is left out.
+function groupByDay(items) {
+  const days = new Map();
+  for (const item of items) {
+    const key = dayKey(solvedAtOf(item));
+    const day = days.get(key) || { problems: 0, seconds: 0, items: [] };
+    const hidden = isProblemTimeHidden(item.contestId, item.problemIndex);
+    day.problems += 1;
+    if (!hidden) day.seconds += item.timeSpentSeconds || 0;
+    day.items.push({ item, hidden });
+    days.set(key, day);
+  }
+  return days;
+}
+
+// First and last day shown: the last 53 weeks, or one calendar year
+function heatRange(period) {
+  const today = startOfDay(new Date());
+  if (period === "last") {
+    const from = addDays(today, -today.getDay() - 52 * 7);
+    return { from, to: today };
+  }
+  const year = Number(period);
+  return { from: new Date(year, 0, 1), to: new Date(year, 11, 31) };
+}
+
+function heatValue(day, metric) {
+  if (!day) return 0;
+  return metric === "time" ? day.seconds : day.problems;
+}
+
+// Distinct non-zero values, ascending. Quarters are taken over these, so a
+// period where most active days have 1 problem still uses all four greens.
+function heatSteps(values) {
+  return [...new Set(values.filter(v => v > 0))].sort((a, b) => a - b);
+}
+
+// Quartile limits of the active days' values: level 1–4 for each active day
+function heatLevels(values) {
+  const sorted = heatSteps(values);
+  if (!sorted.length) return () => 0;
+  const at = q => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  const limits = [at(0.25), at(0.5), at(0.75)];
+  return value => {
+    if (value <= 0) return 0;
+    if (value <= limits[0]) return 1;
+    if (value <= limits[1]) return 2;
+    if (value <= limits[2]) return 3;
+    return 4;
+  };
+}
+
+function formatHeatValue(value, metric) {
+  if (metric === "time") return formatDuration(value);
+  return `${value} problem${value === 1 ? "" : "s"}`;
+}
+
+function renderActivity(items) {
+  const grid = document.getElementById("heat-grid");
+  if (!grid) return;
+  heatItems = items;
+  heatDays = groupByDay(items);
+
+  const metricEl = document.getElementById("heat-metric");
+  const periodEl = document.getElementById("heat-period");
+
+  // Period choices: the last 12 months, then each year that has data
+  const thisYear = new Date().getFullYear();
+  const years = new Set([thisYear]);
+  for (const key of heatDays.keys()) years.add(Number(key.slice(0, 4)));
+  const savedPeriod = heatPref(HEAT_KEYS.period, "last");
+  periodEl.innerHTML = `<option value="last">Last 12 months</option>` +
+    [...years].sort((a, b) => b - a).map(y => `<option value="${y}">${y}</option>`).join("");
+  periodEl.value = [...periodEl.options].some(o => o.value === savedPeriod) ? savedPeriod : "last";
+  metricEl.value = heatPref(HEAT_KEYS.metric, "problems") === "time" ? "time" : "problems";
+
+  if (!grid._initialized) {
+    grid._initialized = true;
+    metricEl.addEventListener("change", () => { setHeatPref(HEAT_KEYS.metric, metricEl.value); drawHeatmap(); });
+    periodEl.addEventListener("change", () => { setHeatPref(HEAT_KEYS.period, periodEl.value); drawHeatmap(); });
+    initHeatTooltip(grid);
+    // Refit the squares when the card changes width (window resized, or the
+    // dashboard shown after being hidden)
+    let lastWidth = 0;
+    new ResizeObserver(([entry]) => {
+      const width = Math.round(entry.contentRect.width);
+      if (width && width !== lastWidth) {
+        lastWidth = width;
+        drawHeatmap();
+      }
+    }).observe(document.getElementById("heat-scroll"));
+  }
+  drawHeatmap();
+  renderActivityStats();
+}
+
+function drawHeatmap() {
+  const grid = document.getElementById("heat-grid");
+  const metric = document.getElementById("heat-metric").value;
+  const { from, to } = heatRange(document.getElementById("heat-period").value);
+  const start = addDays(from, -from.getDay()); // the Sunday on or before `from`
+  const weeks = Math.floor((to - start) / DAY_MS / 7) + 1;
+  const today = startOfDay(new Date());
+
+  const shown = [];
+  for (let d = new Date(from); d <= to; d = addDays(d, 1)) shown.push(heatValue(heatDays.get(dayKey(d)), metric));
+  const levelOf = heatLevels(shown);
+
+  const parts = [];
+  // Month names above the week in which each month starts
+  let lastMonth = -1;
+  for (let w = 0; w < weeks; w++) {
+    const firstDay = addDays(start, w * 7);
+    const day = firstDay < from ? from : firstDay;
+    if (day.getMonth() !== lastMonth && day.getDate() <= 7) {
+      lastMonth = day.getMonth();
+      parts.push(`<span class="heat-month" style="grid-column:${w + 2}">${day.toLocaleDateString(undefined, { month: "short" })}</span>`);
+    }
+  }
+  [["Mon", 1], ["Wed", 3], ["Fri", 5]].forEach(([label, dow]) => {
+    parts.push(`<span class="heat-wday" style="grid-row:${dow + 2}">${label}</span>`);
+  });
+  for (let w = 0; w < weeks; w++) {
+    for (let dow = 0; dow < 7; dow++) {
+      const date = addDays(start, w * 7 + dow);
+      if (date < from || date > to) continue;
+      const key = dayKey(date);
+      const future = date > today;
+      const level = future ? 0 : levelOf(heatValue(heatDays.get(key), metric));
+      parts.push(`<button type="button" class="heat-cell heat-l${level}${future ? " heat-future" : ""}" style="grid-column:${w + 2};grid-row:${dow + 2}" data-day="${key}" aria-label="${key}"></button>`);
+    }
+  }
+  // Squares fill the card's width (10–14px); narrower screens scroll sideways
+  const scroll = document.getElementById("heat-scroll");
+  const labelWidth = 30;
+  const gap = 3;
+  const fit = Math.floor((scroll.clientWidth - labelWidth - weeks * gap) / weeks);
+  grid.style.setProperty("--heat-cell", `${Math.max(10, Math.min(14, fit || 12))}px`);
+  grid.style.gridTemplateColumns = `${labelWidth - gap}px repeat(${weeks}, var(--heat-cell))`;
+  grid.innerHTML = parts.join("");
+
+  renderHeatLegend(shown, metric);
+  scroll.scrollLeft = scroll.scrollWidth; // phones: start at the latest weeks
+}
+
+function renderHeatLegend(values, metric) {
+  const sorted = heatSteps(values);
+  const at = q => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  const titles = ["None"];
+  if (sorted.length) {
+    const limits = [sorted[0], at(0.25), at(0.5), at(0.75), sorted[sorted.length - 1]];
+    for (let level = 1; level <= 4; level++) {
+      const low = level === 1 ? limits[0] : limits[level - 1];
+      const high = limits[level];
+      titles.push(level === 1 || low === high
+        ? `Up to ${formatHeatValue(high, metric)}`
+        : `Over ${formatHeatValue(low, metric)}, up to ${formatHeatValue(high, metric)}`);
+    }
+  }
+  document.getElementById("heat-legend").innerHTML =
+    `<span>Less</span>${[0, 1, 2, 3, 4].map(level =>
+      `<span class="heat-cell heat-l${level}" title="${escapeAttribute(titles[level] || "")}"></span>`).join("")}<span>More</span>`;
+}
+
+// Hover (or tap / keyboard focus) a day: its totals and the problems solved
+function initHeatTooltip(grid) {
+  const tip = document.getElementById("heat-tip");
+  const hide = () => tip.classList.add("hidden");
+  const show = cell => {
+    const day = heatDays.get(cell.dataset.day);
+    const [y, m, d] = cell.dataset.day.split("-").map(Number);
+    const date = new Date(y, m - 1, d).toLocaleDateString(undefined, {
+      weekday: "short", day: "numeric", month: "short", year: "numeric"
+    });
+    const rows = day
+      ? `<ul class="heat-tip-totals">
+          <li><span>Problems solved</span><b>${day.problems}</b></li>
+          <li><span>Total time</span><b>${formatDuration(day.seconds)}</b></li>
+        </ul>
+        <ul class="heat-tip-list">${day.items.map(({ item, hidden }) =>
+          `<li><span>${problemCode(item)} · ${escapeHtml(item.problemName || "")}</span><b>${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</b></li>`).join("")}</ul>`
+      : `<div class="heat-tip-empty">No problems solved</div>`;
+    tip.innerHTML = `<div class="heat-tip-date">${date}</div>${rows}`;
+    tip.classList.remove("hidden");
+    const rect = cell.getBoundingClientRect();
+    const tipRect = tip.getBoundingClientRect();
+    let left = rect.left + rect.width / 2 - tipRect.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+    let top = rect.top - tipRect.height - 8;
+    if (top < 8) top = rect.bottom + 8;
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+  };
+  grid.addEventListener("mouseover", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });
+  grid.addEventListener("focusin", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });
+  grid.addEventListener("click", e => { const cell = e.target.closest(".heat-cell"); if (cell) show(cell); });
+  grid.addEventListener("mouseleave", hide);
+  grid.addEventListener("focusout", hide);
+  document.getElementById("heat-scroll").addEventListener("scroll", hide, { passive: true });
+  window.addEventListener("scroll", hide, { passive: true });
+  document.addEventListener("click", e => { if (!e.target.closest(".heat-cell")) hide(); });
+}
+
+// Problems, time and longest streak: all time, last 12 months, last 30 days
+function renderActivityStats() {
+  const today = startOfDay(new Date());
+  const windows = [
+    ["all time", null],
+    ["the last 12 months", addDays(today, -364)],
+    ["the last 30 days", addDays(today, -29)]
+  ];
+  const keys = [...heatDays.keys()].sort();
+  const cards = windows.map(([label, from]) => {
+    const fromKey = from ? dayKey(from) : "";
+    const inWindow = keys.filter(key => key >= fromKey && key <= dayKey(today));
+    let problems = 0, seconds = 0, best = 0, run = 0, prev = null;
+    for (const key of inWindow) {
+      const day = heatDays.get(key);
+      problems += day.problems;
+      seconds += day.seconds;
+      const [y, m, d] = key.split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+      run = prev && dayKey(addDays(prev, 1)) === key ? run + 1 : 1;
+      best = Math.max(best, run);
+      prev = date;
+    }
+    return [
+      [`${problems} problem${problems === 1 ? "" : "s"}`, `solved in ${label}`],
+      [formatDuration(seconds), `spent in ${label}`],
+      [`${best} day${best === 1 ? "" : "s"}`, `in a row, longest in ${label}`]
+    ];
+  });
+  // Rows: problems, time, streak; columns: the three windows
+  const statsEl = document.getElementById("heat-stats");
+  statsEl.innerHTML = [0, 1, 2].map(row => cards.map(card =>
+    `<div class="heat-stat"><b>${card[row][0]}</b><span>${card[row][1]}</span></div>`).join("")).join("");
+}
+
 function renderDashboard(items) {
   const dateEl = document.getElementById("dash-date");
   if (!dateEl) return;
+
+  renderActivity(items);
 
   const now = new Date();
   dateEl.textContent = now.toLocaleDateString(undefined, {
