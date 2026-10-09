@@ -4898,11 +4898,6 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 #heat-tip a.heat-tip-name:focus-visible {
   text-decoration: underline;
 }
-.heat-tip-ext {
-  margin-left: 3px;
-  color: var(--tip-muted);
-  font-size: 10px;
-}
 .heat-tip-time {
   color: var(--tip-muted);
   font-variant-numeric: tabular-nums;
@@ -4977,13 +4972,8 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 [data-theme="dark"] .caption,
 [data-theme="dark"] .pay-attention-widget .caption { background-color: #161b1c !important; }
 
-/* Recent reflections: the code opens Codeforces (blue, with a small ↗),
-   the name opens it on Progress (text-coloured, underlined on hover) */
-.dash-ext {
-  margin-left: 2px;
-  font-size: 10px;
-  opacity: 0.75;
-}
+/* Recent reflections: the code opens Codeforces (blue link), the name opens
+   it on Progress (text-coloured, underlined on hover) */
 #dash-recent a.dash-name-link,
 [data-theme="dark"] #dash-recent a.dash-name-link {
   color: inherit !important;
