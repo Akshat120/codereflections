@@ -2263,9 +2263,9 @@ function renderHeatLegend(values, metric) {
       `<span class="heat-cell heat-l${level}" title="${escapeAttribute(titles[level] || "")}"></span>`).join("")}<span>More</span>`;
 }
 
-// Hover (or tap / keyboard focus) a day: its totals and the problems solved.
-// The box fades and slides in from the day, glides to the next day while
-// open, and its arrow points at the day; the day itself grows slightly.
+// Hover (or tap / keyboard focus) a day: a card with its totals and the
+// problems solved. It fades in with a slight zoom from the day's side, and
+// updates in place when moving to another day; the day gets a thin ring.
 function initHeatTooltip(grid) {
   const tip = document.getElementById("heat-tip");
   let activeCell = null;
@@ -2288,15 +2288,14 @@ function initHeatTooltip(grid) {
     const date = new Date(y, m - 1, d).toLocaleDateString(undefined, {
       weekday: "short", day: "numeric", month: "short", year: "numeric"
     });
-    const rows = day
-      ? `<ul class="heat-tip-totals">
-          <li><span>Problems solved</span><b>${day.problems}</b></li>
-          <li><span>Total time</span><b>${formatDuration(day.seconds)}</b></li>
-        </ul>
-        <ul class="heat-tip-list">${day.items.map(({ item, hidden }) =>
-          `<li><span>${problemCode(item)} · ${escapeHtml(item.problemName || "")}</span><b>${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</b></li>`).join("")}</ul>`
+    const MAX_LISTED = 5;
+    const summary = day
+      ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}</div>
+        <ul class="heat-tip-list">${day.items.slice(0, MAX_LISTED).map(({ item, hidden }) =>
+          `<li><span class="heat-tip-code">${problemCode(item)}</span><span class="heat-tip-name">${escapeHtml(item.problemName || "")}</span><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
+            ? `<li class="heat-tip-more">+${day.items.length - MAX_LISTED} more</li>` : ""}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
-    tip.innerHTML = `<div class="heat-tip-date">${date}</div>${rows}`;
+    tip.innerHTML = `<div class="heat-tip-head"><span class="heat-tip-swatch" style="background:${getComputedStyle(cell).backgroundColor}"></span>${date}</div>${summary}`;
 
     // Place it above the day (below when there's no room), kept on screen.
     // offsetWidth/Height ignore the entrance scale, so the size is exact.
@@ -2305,13 +2304,12 @@ function initHeatTooltip(grid) {
     const height = tip.offsetHeight;
     const center = rect.left + rect.width / 2;
     let left = Math.max(8, Math.min(center - width / 2, window.innerWidth - width - 8));
-    const below = rect.top - height - 10 < 8;
-    const top = below ? rect.bottom + 10 : rect.top - height - 10;
+    const below = rect.top - height - 8 < 8;
+    const top = below ? rect.bottom + 8 : rect.top - height - 8;
     tip.classList.toggle("is-below", below);
-    tip.style.setProperty("--arrow-x", `${Math.max(10, Math.min(width - 10, center - left))}px`);
+    tip.style.setProperty("--origin-x", `${Math.max(0, Math.min(width, center - left))}px`);
 
-    // Opening: jump to the spot, then animate in. Already open: glide there.
-    tip.classList.toggle("is-moving", wasOpen);
+    // Opening: place it, then animate in. Already open: just move it.
     tip.style.left = `${left}px`;
     tip.style.top = `${top}px`;
     if (!wasOpen) {
