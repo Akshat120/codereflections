@@ -4887,10 +4887,24 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   border-color: currentColor;
   text-decoration: underline;
 }
-.heat-tip-name {
+/* Problem name: opens Codeforces. Text-coloured (the code is the blue link),
+   underlined on hover, with a small ↗ */
+#heat-tip a.heat-tip-name,
+[data-theme="dark"] #heat-tip a.heat-tip-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--tip-text) !important;
+  text-decoration: none;
+}
+#heat-tip a.heat-tip-name:hover,
+#heat-tip a.heat-tip-name:focus-visible {
+  text-decoration: underline;
+}
+.heat-tip-ext {
+  margin-left: 3px;
+  color: var(--tip-muted);
+  font-size: 10px;
 }
 .heat-tip-time {
   color: var(--tip-muted);
