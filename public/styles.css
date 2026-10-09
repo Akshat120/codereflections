@@ -4775,6 +4775,21 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 .heat-l2 { background: var(--heat-2); }
 .heat-l3 { background: var(--heat-3); }
 .heat-l4 { background: var(--heat-4); }
+/* Average rating mode: Codeforces rank colours */
+.heat-rank-gray { background: #808080; }
+.heat-rank-green { background: #008000; }
+.heat-rank-cyan { background: #03a89e; }
+.heat-rank-blue { background: #0000ff; }
+.heat-rank-violet { background: #aa00aa; }
+.heat-rank-orange { background: #ff8c00; }
+.heat-rank-red { background: #ff0000; }
+[data-theme="dark"] .heat-rank-gray { background: #aaaaaa; }
+[data-theme="dark"] .heat-rank-green { background: #55db55; }
+[data-theme="dark"] .heat-rank-cyan { background: #2cdad0; }
+[data-theme="dark"] .heat-rank-blue { background: #58a6ff; }
+[data-theme="dark"] .heat-rank-violet { background: #d166ff; }
+[data-theme="dark"] .heat-rank-orange { background: #ffaa33; }
+[data-theme="dark"] .heat-rank-red { background: #ff5555; }
 .heat-future { opacity: 0.4; cursor: default; }
 .heat-legend {
   display: flex;
@@ -4788,6 +4803,7 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 .heat-legend span:first-child { margin-right: 3px; }
 .heat-legend span:last-child { margin-left: 3px; }
 .heat-legend .heat-cell { cursor: help; }
+.heat-legend .heat-cell:last-child { margin-left: 0; } /* Average rating legend ends with a square */
 .heat-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -4864,6 +4880,7 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 }
 .heat-tip-summary .heat-tip-dot { color: var(--tip-muted); font-weight: 400; }
 .heat-tip-summary .heat-tip-avg { color: var(--tip-muted); font-weight: 400; }
+.heat-tip-rating { margin-top: 1px; color: var(--tip-muted); }
 .heat-tip-empty {
   margin-top: 2px;
   color: var(--tip-muted);
