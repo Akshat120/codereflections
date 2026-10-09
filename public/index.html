@@ -163,6 +163,25 @@
         </section>
 
         <section class="roundbox">
+          <div class="caption">Activity</div>
+          <div class="roundbox-body heat-body">
+            <div class="heat-controls">
+              <label>Colour by
+                <select id="heat-metric">
+                  <option value="problems">Problems solved</option>
+                  <option value="time">Time spent</option>
+                </select>
+              </label>
+              <select id="heat-period" aria-label="Period"></select>
+            </div>
+            <div class="heat-scroll" id="heat-scroll"><div class="heat-grid" id="heat-grid"></div></div>
+            <div class="heat-legend" id="heat-legend"></div>
+            <div class="heat-stats" id="heat-stats"></div>
+          </div>
+          <div id="heat-tip" class="heat-tip hidden" role="tooltip"></div>
+        </section>
+
+        <section class="roundbox">
           <div class="caption">Recent reflections</div>
           <div class="roundbox-body dash-flush">
             <div id="dash-recent"></div>

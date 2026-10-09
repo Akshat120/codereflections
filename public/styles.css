@@ -4676,3 +4676,167 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 /* The dashboard shows a problem's name as plain text instead of an edit link */
 .flag-edit-reflection-text { display: none; }
 html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
+
+/* ==========================================================================
+   Dashboard activity heatmap (GitHub-style; colours are GitHub's greens)
+   ========================================================================== */
+.heat-body {
+  --heat-cell: 12px;
+  --heat-empty: #ebedf0;
+  --heat-1: #9be9a8;
+  --heat-2: #40c463;
+  --heat-3: #30a14e;
+  --heat-4: #216e39;
+  padding: 10px 12px 12px;
+}
+.heat-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.heat-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.heat-controls select {
+  padding: 2px 4px;
+  font-size: 13px;
+}
+.heat-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.heat-grid {
+  display: grid;
+  grid-template-rows: auto repeat(7, var(--heat-cell));
+  gap: 3px;
+  width: max-content;
+  margin: 0 auto;
+}
+.heat-month {
+  grid-row: 1;
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+}
+.heat-wday {
+  grid-column: 1;
+  font-size: 11px;
+  line-height: var(--heat-cell);
+  color: #666;
+}
+.heat-cell {
+  display: block;
+  width: var(--heat-cell);
+  height: var(--heat-cell);
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--heat-empty);
+  cursor: pointer;
+}
+.heat-cell:focus-visible {
+  outline: 2px solid var(--cf-accent);
+  outline-offset: 1px;
+}
+.heat-l1 { background: var(--heat-1); }
+.heat-l2 { background: var(--heat-2); }
+.heat-l3 { background: var(--heat-3); }
+.heat-l4 { background: var(--heat-4); }
+.heat-future { opacity: 0.4; cursor: default; }
+.heat-legend {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 3px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #666;
+}
+.heat-legend span:first-child { margin-right: 3px; }
+.heat-legend span:last-child { margin-left: 3px; }
+.heat-legend .heat-cell { cursor: help; }
+.heat-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin-top: 14px;
+}
+.heat-stat b {
+  display: block;
+  font-size: 20px;
+  line-height: 1.2;
+  color: #111;
+}
+.heat-stat span {
+  font-size: 12px;
+  color: #666;
+}
+.heat-tip {
+  position: fixed;
+  z-index: 50;
+  max-width: 300px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #24292f;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.heat-tip-date {
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+.heat-tip ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.heat-tip li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.heat-tip li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.heat-tip-list {
+  margin-top: 4px !important;
+  padding-top: 4px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  color: #d0d7de;
+}
+.heat-tip-empty { color: #d0d7de; }
+@media (max-width: 600px) {
+  .heat-stats { gap: 10px 8px; }
+  .heat-stat b { font-size: 15px; }
+  .heat-stat span { font-size: 11px; }
+}
+[data-theme="dark"] .heat-body {
+  --heat-empty: #2d333b;
+  --heat-1: #0e4429;
+  --heat-2: #006d32;
+  --heat-3: #26a641;
+  --heat-4: #39d353;
+}
+[data-theme="dark"] .heat-month,
+[data-theme="dark"] .heat-wday,
+[data-theme="dark"] .heat-legend,
+[data-theme="dark"] .heat-stat span { color: #9aa0a6; }
+[data-theme="dark"] .heat-stat b { color: #e6e6e6; }
+[data-theme="dark"] .heat-tip {
+  background: #f0f3f6;
+  color: #1f2328;
+}
+[data-theme="dark"] .heat-tip-list,
+[data-theme="dark"] .heat-tip-empty { color: #57606a; }
+[data-theme="dark"] .heat-tip-list { border-top-color: rgba(0, 0, 0, 0.15); }
