@@ -2442,10 +2442,10 @@ function renderDashboard(items) {
         <tbody>
           ${recent.map(item => `
             <tr>
-              <td class="dash-col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener">${problemCode(item)}</a></td>
+              <td class="dash-col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}<span class="dash-ext" aria-hidden="true">↗</span></a></td>
               <td>
                 <div class="dash-recent-head">
-                  <a class="flag-edit-reflection" href="/edit-reflection?id=${item.id}" data-route="edit-reflection">${escapeHtml(item.problemName)}</a><span class="flag-edit-reflection-text">${escapeHtml(item.problemName)}</span>
+                  <a class="dash-name-link" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName)}</a>
                   <span class="${ratingColorClass(item.rating)}">${item.rating ?? "—"}</span>
                   <span class="dash-muted">· solved ${formatSavedDate(item.createdAt || item.updatedAt)}</span>
                 </div>

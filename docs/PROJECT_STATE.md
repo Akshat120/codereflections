@@ -125,7 +125,7 @@ The two types are independent. To lock an action **and** hide its link, set both
 | 2 | `ALLOW_EDIT_TIME` | Server | Edit | Time and date | "Edit time" on Manage is refused |
 | 3 | `ALLOW_DELETE_PROBLEM` | Server | Delete | One problem | "Delete" on a Manage row is refused |
 | 4 | `ALLOW_DELETE_ALL` | Server | Delete | Everything | "Delete All" on Manage is refused |
-| 5 | `SHOW_EDIT_REFLECTION` | Link | Edit | Reflection | Hides "Edit" on a saved reflection, "Edit reflection" on Manage; dashboard problem names become plain text |
+| 5 | `SHOW_EDIT_REFLECTION` | Link | Edit | Reflection | Hides "Edit" on a saved reflection, "Edit reflection" on Manage |
 | 6 | `SHOW_EDIT_TIME` | Link | Edit | Time and date | Hides "Edit time" on Manage |
 | 7 | `SHOW_DELETE_PROBLEM` | Link | Delete | One problem | Hides "Delete" on Manage rows |
 | 8 | `SHOW_DELETE_ALL` | Link | Delete | Everything | Hides "Delete All" on Manage |
