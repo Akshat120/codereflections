@@ -4139,6 +4139,20 @@ kbd {
   border-bottom-color: #363a3b;
 }
 
+/* Progress: "<Type> filter is used, click here to reset" */
+.progress-filter-notice {
+  margin: 0 0 10px;
+  padding: 7px 10px;
+  border: 1px solid #e6d58a;
+  border-radius: 4px;
+  background: #fffbe6;
+  font-size: 13px;
+}
+[data-theme="dark"] .progress-filter-notice {
+  border-color: #4d4a2e;
+  background: #2b2a1f;
+}
+
 /* ==========================================================================
    "Simplest implementation" code: Codeforces source listing
    (Google Code Prettify colours from codeforces.com prettify.css)
