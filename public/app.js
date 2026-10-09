@@ -2165,13 +2165,13 @@ function renderActivity(items) {
     }).observe(document.getElementById("heat-scroll"));
   }
   drawHeatmap();
-  renderActivityStats();
 }
 
 function drawHeatmap() {
   const grid = document.getElementById("heat-grid");
   const metric = document.getElementById("heat-metric").value;
-  const { from, to } = heatRange(document.getElementById("heat-period").value);
+  const period = document.getElementById("heat-period").value;
+  const { from, to } = heatRange(period);
   const start = addDays(from, -from.getDay()); // the Sunday on or before `from`
   const weeks = Math.floor((to - start) / DAY_MS / 7) + 1;
   const today = startOfDay(new Date());
@@ -2214,6 +2214,7 @@ function drawHeatmap() {
   grid.innerHTML = parts.join("");
 
   renderHeatLegend(shown, metric);
+  renderActivityStats(from, to, period === "last" ? "in the last 12 months" : `in ${period}`);
   scroll.scrollLeft = scroll.scrollWidth; // phones: start at the latest weeks
 }
 
@@ -2275,39 +2276,32 @@ function initHeatTooltip(grid) {
   document.addEventListener("click", e => { if (!e.target.closest(".heat-cell")) hide(); });
 }
 
-// Problems, time and longest streak: all time, last 12 months, last 30 days
-function renderActivityStats() {
-  const today = startOfDay(new Date());
-  const windows = [
-    ["all time", null],
-    ["the last 12 months", addDays(today, -364)],
-    ["the last 30 days", addDays(today, -29)]
-  ];
-  const keys = [...heatDays.keys()].sort();
-  const cards = windows.map(([label, from]) => {
-    const fromKey = from ? dayKey(from) : "";
-    const inWindow = keys.filter(key => key >= fromKey && key <= dayKey(today));
-    let problems = 0, seconds = 0, best = 0, run = 0, prev = null;
-    for (const key of inWindow) {
-      const day = heatDays.get(key);
+// Problems, time, active days and longest streak for the period the grid
+// shows (the last 12 months or the chosen year), up to today
+function renderActivityStats(from, to, label) {
+  const last = Math.min(to, startOfDay(new Date()));
+  let problems = 0, seconds = 0, active = 0, best = 0, run = 0;
+  for (let d = new Date(from); d <= last; d = addDays(d, 1)) {
+    const day = heatDays.get(dayKey(d));
+    if (day) {
       problems += day.problems;
       seconds += day.seconds;
-      const [y, m, d] = key.split("-").map(Number);
-      const date = new Date(y, m - 1, d);
-      run = prev && dayKey(addDays(prev, 1)) === key ? run + 1 : 1;
+      active += 1;
+      run += 1;
       best = Math.max(best, run);
-      prev = date;
+    } else {
+      run = 0;
     }
-    return [
-      [`${problems} problem${problems === 1 ? "" : "s"}`, `solved in ${label}`],
-      [formatDuration(seconds), `spent in ${label}`],
-      [`${best} day${best === 1 ? "" : "s"}`, `in a row, longest in ${label}`]
-    ];
-  });
-  // Rows: problems, time, streak; columns: the three windows
-  const statsEl = document.getElementById("heat-stats");
-  statsEl.innerHTML = [0, 1, 2].map(row => cards.map(card =>
-    `<div class="heat-stat"><b>${card[row][0]}</b><span>${card[row][1]}</span></div>`).join("")).join("");
+  }
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const stats = [
+    [plural(problems, "problem"), `solved ${label}`],
+    [formatDuration(seconds), `spent ${label}`],
+    [plural(active, "day"), `with at least one problem`],
+    [plural(best, "day"), `in a row, longest streak`]
+  ];
+  document.getElementById("heat-stats").innerHTML = stats.map(([value, text]) =>
+    `<div class="heat-stat"><b>${value}</b><span>${text}</span></div>`).join("");
 }
 
 function renderDashboard(items) {
