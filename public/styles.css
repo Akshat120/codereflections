@@ -4682,6 +4682,7 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
    ========================================================================== */
 .heat-body {
   --heat-cell: 12px;
+  --heat-bg: #fff;
   --heat-empty: #ebedf0;
   --heat-1: #9be9a8;
   --heat-2: #40c463;
@@ -4710,6 +4711,12 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 .heat-scroll {
   overflow-x: auto;
   padding-bottom: 4px;
+  /* Scrolling stops on whole weeks, just after the pinned weekday labels */
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 30px;
+}
+.heat-grid .heat-cell {
+  scroll-snap-align: start;
 }
 .heat-grid {
   display: grid;
@@ -4726,8 +4733,17 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 }
 .heat-wday {
   grid-column: 1;
+  /* Stays in view while the squares scroll sideways (phones) */
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  /* Cover the gaps around it too, so no square shows through */
+  margin: -1.5px 0;
+  box-shadow: 3px 0 0 var(--heat-bg);
+  background: var(--heat-bg);
   font-size: 11px;
-  line-height: var(--heat-cell);
   color: #666;
 }
 .heat-cell {
@@ -4822,6 +4838,7 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   .heat-stat span { font-size: 11px; }
 }
 [data-theme="dark"] .heat-body {
+  --heat-bg: #222527;
   --heat-empty: #2d333b;
   --heat-1: #0e4429;
   --heat-2: #006d32;
@@ -4833,6 +4850,7 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
 [data-theme="dark"] .heat-legend,
 [data-theme="dark"] .heat-stat span { color: #9aa0a6; }
 [data-theme="dark"] .heat-stat b { color: #e6e6e6; }
+
 [data-theme="dark"] .heat-tip {
   background: #f0f3f6;
   color: #1f2328;

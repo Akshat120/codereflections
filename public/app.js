@@ -2191,9 +2191,13 @@ function drawHeatmap() {
       parts.push(`<span class="heat-month" style="grid-column:${w + 2}">${day.toLocaleDateString(undefined, { month: "short" })}</span>`);
     }
   }
-  [["Mon", 1], ["Wed", 3], ["Fri", 5]].forEach(([label, dow]) => {
-    parts.push(`<span class="heat-wday" style="grid-row:${dow + 2}">${label}</span>`);
-  });
+  // Weekday labels (Mon / Wed / Fri). Every row gets a cell, plus one above
+  // them, so the pinned label column covers the squares scrolling under it.
+  const weekdayLabels = { 1: "Mon", 3: "Wed", 5: "Fri" };
+  parts.push(`<span class="heat-wday" style="grid-row:1"></span>`);
+  for (let dow = 0; dow < 7; dow++) {
+    parts.push(`<span class="heat-wday" style="grid-row:${dow + 2}">${weekdayLabels[dow] || ""}</span>`);
+  }
   for (let w = 0; w < weeks; w++) {
     for (let dow = 0; dow < 7; dow++) {
       const date = addDays(start, w * 7 + dow);
@@ -2204,18 +2208,40 @@ function drawHeatmap() {
       parts.push(`<button type="button" class="heat-cell heat-l${level}${future ? " heat-future" : ""}" style="grid-column:${w + 2};grid-row:${dow + 2}" data-day="${key}" aria-label="${key}"></button>`);
     }
   }
-  // Squares fill the card's width (10–14px); narrower screens scroll sideways
+  // Squares fill the card's width (10–14px). Where the year doesn't fit
+  // (phones), the grid scrolls sideways, and the squares are sized so a whole
+  // number of weeks fills the view: the first and last visible columns then
+  // sit exactly at the edges, like the legend and stats below.
   const scroll = document.getElementById("heat-scroll");
   const labelWidth = 30;
   const gap = 3;
-  const fit = Math.floor((scroll.clientWidth - labelWidth - weeks * gap) / weeks);
-  grid.style.setProperty("--heat-cell", `${Math.max(10, Math.min(14, fit || 12))}px`);
+  const available = scroll.clientWidth - labelWidth;
+  const fit = Math.floor((available - weeks * gap) / weeks);
+  let cell = Math.min(14, fit || 12);
+  if (fit < 10) {
+    const columns = Math.max(1, Math.floor((available + gap) / (10 + gap)));
+    cell = (available + gap) / columns - gap;
+  }
+  grid.style.setProperty("--heat-cell", `${cell}px`);
   grid.style.gridTemplateColumns = `${labelWidth - gap}px repeat(${weeks}, var(--heat-cell))`;
   grid.innerHTML = parts.join("");
 
+  // Legend and stats line up with the squares: from the first week column
+  // to the last (or the visible width, when the grid scrolls on phones)
+  const below = document.getElementById("heat-below");
+  const gridWidth = grid.offsetWidth;
+  const visibleWidth = scroll.clientWidth;
+  // (the weekday labels stay pinned at the left, so the squares always
+  // start right after them)
+  const left = Math.max(0, (visibleWidth - gridWidth) / 2) + labelWidth;
+  below.style.marginLeft = `${left}px`;
+  below.style.width = `${Math.max(0, Math.min(gridWidth, visibleWidth) - labelWidth)}px`;
+
   renderHeatLegend(shown, metric);
   renderActivityStats(from, to, period === "last" ? "in the last 12 months" : `in ${period}`);
-  scroll.scrollLeft = scroll.scrollWidth; // phones: start at the latest weeks
+  // Phones: start at the latest weeks (the last column, not the overhang of
+  // its month name)
+  scroll.scrollLeft = grid.offsetWidth - scroll.clientWidth;
 }
 
 function renderHeatLegend(values, metric) {
