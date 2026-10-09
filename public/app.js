@@ -2793,6 +2793,25 @@ function populateProgressTagFilter(items) {
   }
 }
 
+// "<Type> filter is used, click here to reset" above the Progress table,
+// naming every filter in effect (sort order isn't a filter)
+function renderProgressFilterNotice(activeReason) {
+  const notice = document.getElementById("progress-filter-notice");
+  if (!notice) return;
+  const f = journalFilterState;
+  const types = [];
+  if ((f.search || "").trim()) types.push("Search");
+  if (f.minRating !== "" || f.maxRating !== "" || (f.ratingCategory && f.ratingCategory !== "all")) types.push("Rating");
+  if (f.tag && f.tag !== "all") types.push("Tag");
+  if (activeReason) types.push("Stuck reason");
+
+  notice.classList.toggle("hidden", !types.length);
+  if (!types.length) return;
+  const names = types.map(t => `<b>${t}</b>`);
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  notice.innerHTML = `${list} filter${types.length === 1 ? " is" : "s are"} used, <a href="/progress" id="progress-filter-reset">click here to reset</a>.`;
+}
+
 function applyJournalFilters() {
   if (!journalCache) return;
 
@@ -2877,6 +2896,8 @@ function applyJournalFilters() {
       });
     }
   }
+
+  renderProgressFilterNotice(activeReason);
 
   // 4. Sort Order
   const solvedTime = item => new Date(item.createdAt || item.updatedAt || 0).getTime();
@@ -3006,6 +3027,13 @@ function resetProgressFilters({ keepUrl = false, keepSort = false } = {}) {
 function setupProgressFilterListeners() {
   if (journalFiltersInitialized) return;
   journalFiltersInitialized = true;
+
+  // "click here to reset" in the filter notice: clear every filter, keep sort
+  document.getElementById("progress-filter-notice")?.addEventListener("click", (e) => {
+    if (!e.target.closest("#progress-filter-reset")) return;
+    e.preventDefault();
+    resetProgressFilters({ keepSort: true });
+  });
 
   const form = document.getElementById("progress-filter-form");
   if (form) {
