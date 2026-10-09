@@ -2086,9 +2086,13 @@ function groupByDay(items) {
   const days = new Map();
   for (const item of items) {
     const key = dayKey(solvedAtOf(item));
-    const day = days.get(key) || { problems: 0, seconds: 0, timed: 0, items: [] };
+    const day = days.get(key) || { problems: 0, seconds: 0, timed: 0, ratingSum: 0, rated: 0, items: [] };
     const hidden = isProblemTimeHidden(item.contestId, item.problemIndex);
     day.problems += 1;
+    if (item.rating != null && !isNaN(item.rating)) {
+      day.ratingSum += Number(item.rating);
+      day.rated += 1; // problems with a rating, for the average rating
+    }
     if (!hidden) {
       day.seconds += item.timeSpentSeconds || 0;
       day.timed += 1; // problems whose time counts, for the average
@@ -2115,6 +2119,8 @@ function heatValue(day, metric) {
   if (metric === "time") return day.seconds;
   // Average time per problem that day (problems with hidden time left out)
   if (metric === "avg") return day.timed ? Math.round(day.seconds / day.timed) : 0;
+  // Average rating of the day's rated problems
+  if (metric === "rating") return day.rated ? Math.round(day.ratingSum / day.rated) : 0;
   return day.problems;
 }
 
@@ -2162,7 +2168,7 @@ function renderActivity(items) {
     [...years].sort((a, b) => b - a).map(y => `<option value="${y}">${y}</option>`).join("");
   periodEl.value = [...periodEl.options].some(o => o.value === savedPeriod) ? savedPeriod : "last";
   const savedMetric = heatPref(HEAT_KEYS.metric, "problems");
-  metricEl.value = ["time", "avg"].includes(savedMetric) ? savedMetric : "problems";
+  metricEl.value = ["time", "avg", "rating"].includes(savedMetric) ? savedMetric : "problems";
 
   if (!grid._initialized) {
     grid._initialized = true;
@@ -2220,8 +2226,13 @@ function drawHeatmap() {
       if (date < from || date > to) continue;
       const key = dayKey(date);
       const future = date > today;
-      const level = future ? 0 : levelOf(heatValue(heatDays.get(key), metric));
-      parts.push(`<button type="button" class="heat-cell heat-l${level}${future ? " heat-future" : ""}" style="grid-column:${w + 2};grid-row:${dow + 2}" data-day="${key}" aria-label="${key}"></button>`);
+      const value = future ? 0 : heatValue(heatDays.get(key), metric);
+      // Average rating: the Codeforces rank colour of the day's average
+      // (e.g. rating-cyan → heat-rank-cyan); other modes: green levels
+      const shade = metric === "rating"
+        ? (value ? `heat-${ratingColorClass(value).replace("rating-", "rank-")}` : "heat-l0")
+        : `heat-l${future ? 0 : levelOf(value)}`;
+      parts.push(`<button type="button" class="heat-cell ${shade}${future ? " heat-future" : ""}" style="grid-column:${w + 2};grid-row:${dow + 2}" data-day="${key}" aria-label="${key}"></button>`);
     }
   }
   // Squares fill the card's width (10–14px). Where the year doesn't fit
@@ -2260,7 +2271,18 @@ function drawHeatmap() {
   scroll.scrollLeft = grid.offsetWidth - scroll.clientWidth;
 }
 
+// Codeforces rank colours, for the Average rating legend
+const HEAT_RANKS = [
+  ["gray", "Below 1200"], ["green", "1200–1399"], ["cyan", "1400–1599"], ["blue", "1600–1899"],
+  ["violet", "1900–2099"], ["orange", "2100–2399"], ["red", "2400 and above"]
+];
+
 function renderHeatLegend(values, metric) {
+  if (metric === "rating") {
+    document.getElementById("heat-legend").innerHTML = `<span>Avg rating</span>${HEAT_RANKS.map(([rank, range]) =>
+      `<span class="heat-cell heat-rank-${rank}" title="${range}"></span>`).join("")}`;
+    return;
+  }
   const sorted = heatSteps(values);
   const at = q => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
   const titles = ["None"];
@@ -2323,7 +2345,8 @@ function initHeatTooltip(grid) {
     });
     const summary = day
       ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}${day.timed > 1
-          ? `<span class="heat-tip-dot"> · </span><span class="heat-tip-avg">avg ${formatDuration(Math.round(day.seconds / day.timed))}</span>` : ""}</div>
+          ? `<span class="heat-tip-dot"> · </span><span class="heat-tip-avg">avg ${formatDuration(Math.round(day.seconds / day.timed))}</span>` : ""}</div>${day.rated
+          ? `<div class="heat-tip-rating">Avg rating <span class="${ratingColorClass(Math.round(day.ratingSum / day.rated))}">${Math.round(day.ratingSum / day.rated)}</span></div>` : ""}
         <ul class="heat-tip-list">${day.items.map(({ item, hidden }) =>
           `<li><a class="heat-tip-code" href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}</a><a class="heat-tip-name" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName || "")}</a><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
