@@ -4887,8 +4887,8 @@ html.hide-edit-reflection .flag-edit-reflection-text { display: inline; }
   border-color: currentColor;
   text-decoration: underline;
 }
-/* Problem name: opens Codeforces. Text-coloured (the code is the blue link),
-   underlined on hover, with a small ↗ */
+/* Problem name: opens it on Progress. Text-coloured (the code is the blue
+   link, to Codeforces), underlined on hover */
 #heat-tip a.heat-tip-name,
 [data-theme="dark"] #heat-tip a.heat-tip-name {
   overflow: hidden;

@@ -2315,11 +2315,11 @@ function initHeatTooltip(grid) {
     const summary = day
       ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}</div>
         <ul class="heat-tip-list">${day.items.slice(0, MAX_LISTED).map(({ item, hidden }) =>
-          `<li><a class="heat-tip-code" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${problemCode(item)}</a><a class="heat-tip-name" href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${escapeHtml(item.problemName || "")}<span class="heat-tip-ext" aria-hidden="true">↗</span></a><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
+          `<li><a class="heat-tip-code" href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}<span class="heat-tip-ext" aria-hidden="true">↗</span></a><a class="heat-tip-name" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName || "")}</a><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
             ? `<li class="heat-tip-more">+${day.items.length - MAX_LISTED} more</li>` : ""}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
     const hint = !day ? ""
-      : pinned === cell ? `<div class="heat-tip-hint">Code opens it on Progress · name opens Codeforces</div>`
+      : pinned === cell ? `<div class="heat-tip-hint">Code opens Codeforces · name opens it on Progress</div>`
       : canHover ? `<div class="heat-tip-hint">Click the day to keep this open</div>` : "";
     tip.classList.toggle("is-pinned", pinned === cell);
     tip.innerHTML = `<div class="heat-tip-head"><span class="heat-tip-swatch" style="background:${getComputedStyle(cell).backgroundColor}"></span>${date}</div>${summary}${hint}`;
