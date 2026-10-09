@@ -4775,21 +4775,22 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 .heat-l2 { background: var(--heat-2); }
 .heat-l3 { background: var(--heat-3); }
 .heat-l4 { background: var(--heat-4); }
-/* Average rating mode: Codeforces rank colours */
-.heat-rank-gray { background: #808080; }
-.heat-rank-green { background: #008000; }
-.heat-rank-cyan { background: #03a89e; }
-.heat-rank-blue { background: #0000ff; }
-.heat-rank-violet { background: #aa00aa; }
-.heat-rank-orange { background: #ff8c00; }
-.heat-rank-red { background: #ff0000; }
-[data-theme="dark"] .heat-rank-gray { background: #aaaaaa; }
-[data-theme="dark"] .heat-rank-green { background: #55db55; }
-[data-theme="dark"] .heat-rank-cyan { background: #2cdad0; }
-[data-theme="dark"] .heat-rank-blue { background: #58a6ff; }
-[data-theme="dark"] .heat-rank-violet { background: #d166ff; }
-[data-theme="dark"] .heat-rank-orange { background: #ffaa33; }
-[data-theme="dark"] .heat-rank-red { background: #ff5555; }
+/* Average rating mode: softened Codeforces rank colours (same hues, less
+   saturated), checked for colour-blind separation on each theme's card */
+.heat-rank-gray { background: #9aa0a6; }
+.heat-rank-green { background: #6a9a3a; }
+.heat-rank-cyan { background: #3fc1c0; }
+.heat-rank-blue { background: #4f7ae8; }
+.heat-rank-violet { background: #c45ab0; }
+.heat-rank-orange { background: #de9046; }
+.heat-rank-red { background: #cc423e; }
+[data-theme="dark"] .heat-rank-gray { background: #727980; }
+[data-theme="dark"] .heat-rank-green { background: #5d9230; }
+[data-theme="dark"] .heat-rank-cyan { background: #1ca4ad; }
+[data-theme="dark"] .heat-rank-blue { background: #4a6fd0; }
+[data-theme="dark"] .heat-rank-violet { background: #a9509a; }
+[data-theme="dark"] .heat-rank-orange { background: #c2862f; }
+[data-theme="dark"] .heat-rank-red { background: #c0443f; }
 .heat-future { opacity: 0.4; cursor: default; }
 .heat-legend {
   display: flex;
