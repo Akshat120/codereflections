@@ -2086,10 +2086,13 @@ function groupByDay(items) {
   const days = new Map();
   for (const item of items) {
     const key = dayKey(solvedAtOf(item));
-    const day = days.get(key) || { problems: 0, seconds: 0, items: [] };
+    const day = days.get(key) || { problems: 0, seconds: 0, timed: 0, items: [] };
     const hidden = isProblemTimeHidden(item.contestId, item.problemIndex);
     day.problems += 1;
-    if (!hidden) day.seconds += item.timeSpentSeconds || 0;
+    if (!hidden) {
+      day.seconds += item.timeSpentSeconds || 0;
+      day.timed += 1; // problems whose time counts, for the average
+    }
     day.items.push({ item, hidden });
     days.set(key, day);
   }
@@ -2109,7 +2112,10 @@ function heatRange(period) {
 
 function heatValue(day, metric) {
   if (!day) return 0;
-  return metric === "time" ? day.seconds : day.problems;
+  if (metric === "time") return day.seconds;
+  // Average time per problem that day (problems with hidden time left out)
+  if (metric === "avg") return day.timed ? Math.round(day.seconds / day.timed) : 0;
+  return day.problems;
 }
 
 // Distinct non-zero values, ascending. Quarters are taken over these, so a
@@ -2134,7 +2140,7 @@ function heatLevels(values) {
 }
 
 function formatHeatValue(value, metric) {
-  if (metric === "time") return formatDuration(value);
+  if (metric === "time" || metric === "avg") return formatDuration(value);
   return `${value} problem${value === 1 ? "" : "s"}`;
 }
 
@@ -2155,7 +2161,8 @@ function renderActivity(items) {
   periodEl.innerHTML = `<option value="last">Last 12 months</option>` +
     [...years].sort((a, b) => b - a).map(y => `<option value="${y}">${y}</option>`).join("");
   periodEl.value = [...periodEl.options].some(o => o.value === savedPeriod) ? savedPeriod : "last";
-  metricEl.value = heatPref(HEAT_KEYS.metric, "problems") === "time" ? "time" : "problems";
+  const savedMetric = heatPref(HEAT_KEYS.metric, "problems");
+  metricEl.value = ["time", "avg"].includes(savedMetric) ? savedMetric : "problems";
 
   if (!grid._initialized) {
     grid._initialized = true;
@@ -2315,7 +2322,8 @@ function initHeatTooltip(grid) {
       weekday: "short", day: "numeric", month: "short", year: "numeric"
     });
     const summary = day
-      ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}</div>
+      ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}${day.timed > 1
+          ? `<span class="heat-tip-dot"> · </span><span class="heat-tip-avg">avg ${formatDuration(Math.round(day.seconds / day.timed))}</span>` : ""}</div>
         <ul class="heat-tip-list">${day.items.map(({ item, hidden }) =>
           `<li><a class="heat-tip-code" href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}</a><a class="heat-tip-name" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName || "")}</a><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
