@@ -488,8 +488,8 @@ a:hover {
 
 [data-theme="dark"] .site-footer-link:hover,
 [data-theme="dark"] .site-footer-link:focus-visible {
-  border-color: #425e9c;
-  color: #425e9c;
+  border-color: #58a6ff;
+  color: #58a6ff;
   background: #181a1b;
 }
 
@@ -2580,10 +2580,10 @@ a:hover {
 
 /* Links */
 [data-theme="dark"] a {
-  color: #425e9c;
+  color: #58a6ff;
 }
 [data-theme="dark"] a:hover {
-  color: #5a76b4;
+  color: #79b8ff;
 }
 
 /* Header */
@@ -2697,10 +2697,10 @@ a:hover {
   border-top-color: #383c40 !important;
 }
 [data-theme="dark"] .sidebar-more a {
-  color: #425e9c !important;
+  color: #58a6ff !important;
 }
 [data-theme="dark"] .sidebar-more a:hover {
-  color: #5a76b4 !important;
+  color: #79b8ff !important;
 }
 [data-theme="dark"] .progress-stats .stat-row {
   border-bottom-color: #34383c !important;
@@ -3267,10 +3267,10 @@ a:hover {
   color: #425e9c !important;
 }
 [data-theme="dark"] .markdown-body a.md-link {
-  color: #425e9c !important;
+  color: #58a6ff !important;
 }
 [data-theme="dark"] .markdown-body a.md-link:hover {
-  color: #5a76b4 !important;
+  color: #79b8ff !important;
 }
 [data-theme="dark"] .markdown-body table.md-table th,
 [data-theme="dark"] .markdown-body table.md-table td {
@@ -3400,12 +3400,12 @@ a:hover {
 
 /* Content & sidebar links: underlined, normal weight */
 [data-theme="dark"] :is(.content-column, .sidebar) a:not([class*="btn"]):not(.cf-filter-pill) {
-  color: #425e9c !important;
+  color: #58a6ff !important;
   text-decoration: underline;
   font-weight: normal;
 }
 [data-theme="dark"] :is(.content-column, .sidebar) a:not([class*="btn"]):not(.cf-filter-pill):hover {
-  color: #5a76b4 !important;
+  color: #79b8ff !important;
 }
 [data-theme="dark"] :is(.content-column, .sidebar) .post-title a {
   text-decoration: none;
@@ -3481,7 +3481,7 @@ a:hover {
   padding: 0;
   font-size: 14px;
   font-weight: normal;
-  color: #425e9c !important;
+  color: #58a6ff !important;
   text-decoration: underline;
 }
 
@@ -3551,10 +3551,10 @@ a:hover {
   outline-offset: 1px;
 }
 [data-theme="dark"] .cf-row-action {
-  color: #425e9c;
+  color: #58a6ff;
 }
 [data-theme="dark"] .cf-row-action:hover {
-  color: #5a76b4;
+  color: #79b8ff;
 }
 [data-theme="dark"] .cf-row-action.is-danger:hover {
   color: #ff7b72;
@@ -4001,7 +4001,7 @@ kbd {
 }
 
 [data-theme="dark"] .journal-detail-link a {
-  color: #425e9c !important;
+  color: #58a6ff !important;
 }
 
 /* ==========================================================================
@@ -4080,7 +4080,7 @@ kbd {
   border-color: #3e4448;
 }
 [data-theme="dark"] .content-column .cf-pagination a.cf-page {
-  color: #425e9c !important;
+  color: #58a6ff !important;
   text-decoration: none;
 }
 [data-theme="dark"] .cf-pagination a.cf-page:hover {
@@ -4358,7 +4358,7 @@ pre.prettyprint.cf-source {
   text-decoration: underline;
 }
 [data-theme="dark"] .header-logout {
-  color: #425e9c;
+  color: #58a6ff;
 }
 
 /* ==========================================================================
