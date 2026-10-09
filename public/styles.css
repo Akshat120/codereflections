@@ -4854,12 +4854,21 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
   color: var(--tip-muted);
 }
 .heat-tip-list {
+  /* Every problem of the day is listed; a long list scrolls inside the card */
+  max-height: min(240px, 45vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 8px 0 0;
-  padding: 8px 0 0;
+  padding: 0 0 2px;
   border-top: 1px solid var(--tip-border);
   list-style: none;
   display: grid;
   gap: 5px;
+}
+/* The gap below the divider sits on the first row, so scrolled rows are cut
+   off cleanly at the divider */
+.heat-tip-list li:first-child {
+  margin-top: 8px;
 }
 .heat-tip-list li {
   display: grid;
@@ -4901,9 +4910,6 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 .heat-tip-time {
   color: var(--tip-muted);
   font-variant-numeric: tabular-nums;
-}
-.heat-tip-more {
-  color: var(--tip-muted);
 }
 .heat-tip-hint {
   margin-top: 8px;

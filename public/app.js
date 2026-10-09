@@ -2314,12 +2314,10 @@ function initHeatTooltip(grid) {
     const date = new Date(y, m - 1, d).toLocaleDateString(undefined, {
       weekday: "short", day: "numeric", month: "short", year: "numeric"
     });
-    const MAX_LISTED = 5;
     const summary = day
       ? `<div class="heat-tip-summary">${day.problems} problem${day.problems === 1 ? "" : "s"}<span class="heat-tip-dot"> · </span>${formatDuration(day.seconds)}</div>
-        <ul class="heat-tip-list">${day.items.slice(0, MAX_LISTED).map(({ item, hidden }) =>
-          `<li><a class="heat-tip-code" href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}</a><a class="heat-tip-name" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName || "")}</a><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}${day.items.length > MAX_LISTED
-            ? `<li class="heat-tip-more">+${day.items.length - MAX_LISTED} more</li>` : ""}</ul>`
+        <ul class="heat-tip-list">${day.items.map(({ item, hidden }) =>
+          `<li><a class="heat-tip-code" href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}</a><a class="heat-tip-name" href="/progress?search=${encodeURIComponent(`${item.contestId}${item.problemIndex}`)}" data-route="progress" title="Show on Progress">${escapeHtml(item.problemName || "")}</a><span class="heat-tip-time">${hidden ? "--" : formatDuration(item.timeSpentSeconds || 0)}</span></li>`).join("")}</ul>`
       : `<div class="heat-tip-empty">No problems solved</div>`;
     const hint = !day ? ""
       : pinned === cell ? `<div class="heat-tip-hint">Code opens Codeforces · name opens it on Progress</div>`
