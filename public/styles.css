@@ -4863,6 +4863,7 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
   font-weight: 600;
 }
 .heat-tip-summary .heat-tip-dot { color: var(--tip-muted); font-weight: 400; }
+.heat-tip-summary .heat-tip-avg { color: var(--tip-muted); font-weight: 400; }
 .heat-tip-empty {
   margin-top: 2px;
   color: var(--tip-muted);
