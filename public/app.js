@@ -657,6 +657,9 @@ function initNavigation() {
 
     event.preventDefault();
     navigate(link.getAttribute("href"));
+    // Pages switch without a reload, so start the new one at the top (the
+    // browser's back / forward keep their own scroll position)
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   });
 
   window.addEventListener("popstate", () => {
