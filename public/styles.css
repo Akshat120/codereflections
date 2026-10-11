@@ -5296,10 +5296,6 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 .profile-card .cf-row-action {
   font-size: inherit;
 }
-.profile-line {
-  margin-bottom: 12px;
-  font-size: 15px;
-}
 .profile-recent {
   color: #008000;
 }

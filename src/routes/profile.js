@@ -77,11 +77,10 @@ function avatarUrl(value) {
 
 const text = (value, max) => (typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null);
 const integer = value => (Number.isInteger(value) ? value : null);
-const isoTime = seconds => (Number.isInteger(seconds) ? new Date(seconds * 1000).toISOString() : null);
 
-// Looks the handle up on Codeforces and stores its public profile: rating,
-// rank, contribution, friends, registration and last visit, avatar. Name and
-// place are taken over when Codeforces has them. Nothing else (no submissions
+// Looks the handle up on Codeforces and stores what the card shows from its
+// public profile: rating, rank and avatar. Name and place are taken over when
+// Codeforces has them. Nothing else (no submissions
 // or contest history) is read.
 profileRoutes.post("/sync", async (req, res) => {
   const handle = typeof req.body?.handle === "string" ? req.body.handle.trim() : "";
@@ -110,10 +109,6 @@ profileRoutes.post("/sync", async (req, res) => {
       maxRating: integer(user.maxRating),
       rank: text(user.rank, 40),
       maxRank: text(user.maxRank, 40),
-      contribution: integer(user.contribution),
-      friendOfCount: integer(user.friendOfCount),
-      registeredAt: isoTime(user.registrationTimeSeconds),
-      lastOnlineAt: isoTime(user.lastOnlineTimeSeconds),
       photo: avatarUrl(user.titlePhoto),
       syncedAt: new Date().toISOString()
     }
