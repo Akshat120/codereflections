@@ -4850,11 +4850,6 @@ function titleCase(text) {
   return String(text).replace(/\b[a-z]/g, letter => letter.toUpperCase());
 }
 
-// Codeforces shows a recent visit as "online now"
-function formatLastVisit(iso) {
-  return Date.now() - new Date(iso).getTime() < 10 * 60 * 1000 ? "online now" : formatTimeAgo(iso);
-}
-
 async function fetchProfile() {
   const res = await fetch("/api/profile");
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not load the profile.");
@@ -4915,8 +4910,6 @@ function renderProfileCard(profile, reflections, review, posts) {
       ${cf ? row("📈", `Contest rating: ${cf.rating == null
         ? "unrated"
         : `<b class="${rankClass}">${cf.rating}</b> <small>(max. <b class="${ratingColorClass(cf.maxRating)}">${escapeHtml(cf.maxRank || "")}, ${cf.maxRating}</b>)</small>`}`) : ""}
-      ${cf && cf.contribution != null ? row("⭐", `Contribution: <b class="${cf.contribution < 0 ? "rating-gray" : "rating-green"}">${cf.contribution > 0 ? "+" : ""}${cf.contribution}</b>`) : ""}
-      ${cf && cf.friendOfCount != null ? row("🌟", `Friend of: ${cf.friendOfCount.toLocaleString()} users`) : ""}
       ${row("🎯", `Average problem rating: ${avgRating == null
         ? "—"
         : `<b class="${ratingColorClass(avgRating)}">${avgRating}</b> <small>(max. <b class="${ratingColorClass(maxRating)}">${maxRating}</b>)</small>`}`)}
@@ -4925,15 +4918,10 @@ function renderProfileCard(profile, reflections, review, posts) {
       ${row("🔁", due == null
         ? "Due for review: —"
         : `<a href="/review" data-route="review">Due for review: ${due}</a>`)}
-      ${row("⚙️", `<button type="button" class="cf-row-action" id="profile-settings-btn">Change settings</button>`)}
-    </ul>
-    ${cf && cf.lastOnlineAt ? `<div class="profile-line">Last visit: <b class="profile-recent">${formatLastVisit(cf.lastOnlineAt)}</b></div>` : ""}
-    ${cf && cf.registeredAt ? `<div class="profile-line">Registered: ${formatTimeAgo(cf.registeredAt)}</div>` : ""}
-    <div class="profile-line">Last reflection: ${dates.length ? `<b class="profile-recent">${formatTimeAgo(dates[dates.length - 1])}</b>` : "—"}</div>
-    <div class="profile-line">Journal started: ${dates.length ? formatTimeAgo(dates[0]) : "—"}</div>
-    <ul class="profile-rows">
+      ${row("🕒", `Last reflection: ${dates.length ? `<b class="profile-recent">${formatTimeAgo(dates[dates.length - 1])}</b>` : "—"}`)}
       ${row("📝", `<a href="/" data-route="home">Blog entries (${posts.length})</a>`)}
       ${row("✍️", `<a href="/blog-edit" data-route="blog-edit">Write new entry</a>`)}
+      ${row("⚙️", `<button type="button" class="cf-row-action" id="profile-settings-btn">Change settings</button>`)}
     </ul>
     <div class="profile-sync">${cf
       ? `Codeforces data synced ${formatTimeAgo(cf.syncedAt)}. <button type="button" class="cf-row-action" id="profile-sync-btn" data-handle="${escapeAttribute(cf.handle)}">Sync again</button>`
