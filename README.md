@@ -89,14 +89,21 @@ Express server
 
 ## Run locally
 
-You need a MongoDB server: install [MongoDB Community](https://www.mongodb.com/docs/manual/installation/), run it in Docker (`docker run -d -p 27017:27017 mongo:7`), or point `MONGODB_URI` at a free Atlas cluster.
+You need [Node.js 22](https://nodejs.org/) or newer and [Docker](https://www.docker.com/products/docker-desktop/) (for the database).
 
 ```bash
 npm install
+npm run db:up     # start MongoDB in Docker (docker-compose.yml)
+npm run seed      # optional: fill it with a sample journal
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Locally the app connects to `mongodb://127.0.0.1:27017`, uses the `codereflections` database, and needs no login.
+
+- **Sample journal**: `npm run seed` writes the reflections, review history and practice queue from `scripts/seed-data.js` (real Codeforces problems, short illustrative notes, dated relative to today). It refuses to touch a journal that already has data; `npm run seed -- --force` replaces it. It only writes to a database on this machine.
+- **Stopping**: `npm run db:down` stops the database and keeps the data; `docker compose down -v` deletes it.
+- **Without Docker**: install [MongoDB Community](https://www.mongodb.com/docs/manual/installation/) and run it on the default port, or point `MONGODB_URI` at a free Atlas cluster.
+- **Settings**: `npm run dev`, `npm start` and `npm run seed` read a `.env` file in the project folder if there is one (git ignores it).
 
 Optional environment variables:
 
