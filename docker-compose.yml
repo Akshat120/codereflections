@@ -1,0 +1,23 @@
+# The local development database: `npm run db:up` starts it, `npm run db:down`
+# stops it. The app finds it at its default address (mongodb://127.0.0.1:27017).
+# The journal lives in the named volume, so it survives restarts; `docker
+# compose down -v` deletes it.
+services:
+  mongo:
+    image: mongo:7
+    container_name: codereflections-mongo
+    restart: unless-stopped
+    ports:
+      # This machine only: the database has no password
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  mongo-data:
+    name: codereflections-mongo

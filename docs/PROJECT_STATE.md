@@ -37,7 +37,8 @@ for review after 1, 3, 7, 14, 30, 60 and 120 days. One owner, one password.
 | `src/auth.js`, `src/passwordHash.js`, `src/loginLimiter.js` | Login, sessions, scrypt hashing, lock-out |
 | `public/` | Pages (`index.html` app, `login.html` landing + login), `app.js`, `styles.css`, icons |
 | `public/_headers`, `public/_redirects` | Security headers and `/journal` redirect for Cloudflare (Vercel uses `vercel.json`) |
-| `scripts/` | `copy-vendor` (build), `hash-password`, `copy-cluster`, `import-csv`, `migrate-to-mongo` |
+| `scripts/` | `copy-vendor` (build), `hash-password`, `copy-cluster`, `import-csv`, `migrate-to-mongo`, `seed` (sample journal from `seed-data.js`, local databases only) |
+| `docker-compose.yml` | Local development MongoDB (`npm run db:up` / `db:down`) |
 | `docs/screenshots/` | Screenshots used in the README |
 
 Collections: `reflections`, `practice_queue`, `review_state`, `review_log`,
@@ -169,6 +170,8 @@ The two types are independent. To lock an action **and** hide its link, set both
 ## Handy commands
 
 ```bash
+npm run db:up               # start the local MongoDB in Docker (db:down stops it)
+npm run seed                # fill the local database with the sample journal (--force replaces)
 npm run dev                 # local server with reload (needs a local mongod or MONGODB_URI)
 npm run build               # copy KaTeX / prettify into public/vendor
 npm run hash-password       # make APP_PASSWORD_HASH

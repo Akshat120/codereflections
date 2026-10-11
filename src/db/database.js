@@ -178,6 +178,9 @@ function explain(error) {
   if (/querySrv|ENOTFOUND|EBADNAME/i.test(message)) {
     return `${message}. The cluster address in MONGODB_URI looks wrong (or the password has an unencoded @); copy the string again from Atlas → Connect → Drivers.`;
   }
+  if (/ECONNREFUSED/i.test(message) && cached.uri === DEFAULT_LOCAL_URI) {
+    return `${message}. No MongoDB is running on this machine: start one with \`npm run db:up\` (needs Docker), or set MONGODB_URI.`;
+  }
   if (/Server selection timed out|ECONNREFUSED|ETIMEDOUT|ECONNRESET|SSL|TLS/i.test(message)) {
     return `${message}. The cluster can't be reached: allow 0.0.0.0/0 in Atlas → Network Access, and check the cluster isn't paused.`;
   }
