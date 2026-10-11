@@ -82,6 +82,8 @@ export const collections = {
   queue: collection("practice_queue"),
   reviewState: collection("review_state"),
   reviewLog: collection("review_log"),
+  blogPosts: collection("blog_posts"),
+  profile: collection("profile"),
   counters: collection("counters"),
   loginAttempts: collection("login_attempts")
 };
@@ -110,6 +112,10 @@ function ensureIndexes() {
     ]),
     collections.reviewState.createIndex({ reflectionId: 1 }, { unique: true }),
     collections.reviewLog.createIndex({ reflectionId: 1 }),
+    collections.blogPosts.createIndexes([
+      { key: { id: 1 }, unique: true },
+      { key: { createdAt: -1 } }
+    ]),
     // Failed-login counters delete themselves when their window ends
     collections.loginAttempts.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
   ]);

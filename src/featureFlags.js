@@ -20,10 +20,20 @@ const ACTIONS = {
     show: ["SHOW_EDIT_LINKS", "SHOW_EDIT_TIME"],
     label: "Editing a problem's time and date"
   },
+  editBlog: {
+    allow: ["ALLOW_EDITS", "ALLOW_EDIT_BLOG"],
+    show: ["SHOW_EDIT_LINKS", "SHOW_EDIT_BLOG"],
+    label: "Editing blog entries"
+  },
   deleteProblem: {
     allow: ["ALLOW_DELETES", "ALLOW_DELETE_PROBLEM"],
     show: ["SHOW_DELETE_LINKS", "SHOW_DELETE_PROBLEM"],
     label: "Deleting a problem"
+  },
+  deleteBlog: {
+    allow: ["ALLOW_DELETES", "ALLOW_DELETE_BLOG"],
+    show: ["SHOW_DELETE_LINKS", "SHOW_DELETE_BLOG"],
+    label: "Deleting blog entries"
   },
   deleteAll: {
     allow: ["ALLOW_DELETES", "ALLOW_DELETE_ALL"],

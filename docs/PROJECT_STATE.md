@@ -10,7 +10,9 @@ A private deliberate-practice journal for competitive programming. You load a
 Codeforces problem, solve it with a stopwatch running, then answer five
 reflection questions (key observation, what made me stuck, pattern, future
 trigger, simplest implementation). Spaced repetition brings reflections back
-for review after 1, 3, 7, 14, 30, 60 and 120 days. One owner, one password.
+for review after 1, 3, 7, 14, 30, 60 and 120 days. A private blog (the
+home page) holds free-form notes in Markdown, and the Profile page shows the
+owner's card above the practice dashboard. One owner, one password.
 
 ## Stack
 
@@ -31,9 +33,9 @@ for review after 1, 3, 7, 14, 30, 60 and 120 days. One owner, one password.
 | `api/index.js` | Vercel serverless entry |
 | `src/entry.cloudflare.js` | Cloudflare Workers entry |
 | `src/db/database.js` | MongoDB client, collections, transactions, connection errors explained |
-| `src/repositories/` | Reflections, practice queue, reviews |
-| `src/routes/` | REST API (`/api/problems`, `/api/reflections`, `/api/queue`, `/api/manage`, `/api/reviews`) |
-| `src/services/codeforces.js` | Codeforces API client (server-side) |
+| `src/repositories/` | Reflections, practice queue, reviews, blog entries, profile |
+| `src/routes/` | REST API (`/api/problems`, `/api/reflections`, `/api/queue`, `/api/manage`, `/api/reviews`, `/api/blog`, `/api/profile`) |
+| `src/services/codeforces.js` | Codeforces API client (server-side): problem metadata, and the owner's public profile for the Profile card's sync |
 | `src/auth.js`, `src/passwordHash.js`, `src/loginLimiter.js` | Login, sessions, scrypt hashing, lock-out |
 | `public/` | Pages (`index.html` app, `login.html` landing + login), `app.js`, `styles.css`, icons |
 | `public/_headers`, `public/_redirects` | Security headers and `/journal` redirect for Cloudflare (Vercel uses `vercel.json`) |
@@ -42,7 +44,7 @@ for review after 1, 3, 7, 14, 30, 60 and 120 days. One owner, one password.
 | `docs/screenshots/` | Screenshots used in the README |
 
 Collections: `reflections`, `practice_queue`, `review_state`, `review_log`,
-`counters`, `login_attempts` (see the README's data model).
+`blog_posts`, `profile`, `counters`, `login_attempts` (see the README's data model).
 
 ## Deployments
 
@@ -124,21 +126,25 @@ The two types are independent. To lock an action **and** hide its link, set both
 |---|---|---|---|---|---|
 | 1 | `ALLOW_EDIT_REFLECTION` | Server | Edit | Reflection | Saving changes to an existing reflection is refused |
 | 2 | `ALLOW_EDIT_TIME` | Server | Edit | Time and date | "Edit time" on Manage is refused |
-| 3 | `ALLOW_DELETE_PROBLEM` | Server | Delete | One problem | "Delete" on a Manage row is refused |
-| 4 | `ALLOW_DELETE_ALL` | Server | Delete | Everything | "Delete All" on Manage is refused |
-| 5 | `SHOW_EDIT_REFLECTION` | Link | Edit | Reflection | Hides "Edit" on a saved reflection, "Edit reflection" on Manage |
-| 6 | `SHOW_EDIT_TIME` | Link | Edit | Time and date | Hides "Edit time" on Manage |
-| 7 | `SHOW_DELETE_PROBLEM` | Link | Delete | One problem | Hides "Delete" on Manage rows |
-| 8 | `SHOW_DELETE_ALL` | Link | Delete | Everything | Hides "Delete All" on Manage |
+| 3 | `ALLOW_EDIT_BLOG` | Server | Edit | Blog entry | Saving changes to an existing blog entry is refused |
+| 4 | `ALLOW_DELETE_PROBLEM` | Server | Delete | One problem | "Delete" on a Manage row is refused |
+| 5 | `ALLOW_DELETE_BLOG` | Server | Delete | Blog entry | "Delete" under a blog entry is refused |
+| 6 | `ALLOW_DELETE_ALL` | Server | Delete | Everything | "Delete All" on Manage is refused |
+| 7 | `SHOW_EDIT_REFLECTION` | Link | Edit | Reflection | Hides "Edit" on a saved reflection, "Edit reflection" on Manage |
+| 8 | `SHOW_EDIT_TIME` | Link | Edit | Time and date | Hides "Edit time" on Manage |
+| 9 | `SHOW_EDIT_BLOG` | Link | Edit | Blog entry | Hides "Edit" under blog entries |
+| 10 | `SHOW_DELETE_PROBLEM` | Link | Delete | One problem | Hides "Delete" on Manage rows |
+| 11 | `SHOW_DELETE_BLOG` | Link | Delete | Blog entry | Hides "Delete" under blog entries |
+| 12 | `SHOW_DELETE_ALL` | Link | Delete | Everything | Hides "Delete All" on Manage |
 
 ### Group flags
 
 | # | Flag | Type | Same as setting `false` |
 |---|---|---|---|
-| 9 | `ALLOW_EDITS` | Server | `ALLOW_EDIT_REFLECTION`, `ALLOW_EDIT_TIME` |
-| 10 | `ALLOW_DELETES` | Server | `ALLOW_DELETE_PROBLEM`, `ALLOW_DELETE_ALL` |
-| 11 | `SHOW_EDIT_LINKS` | Link | `SHOW_EDIT_REFLECTION`, `SHOW_EDIT_TIME` |
-| 12 | `SHOW_DELETE_LINKS` | Link | `SHOW_DELETE_PROBLEM`, `SHOW_DELETE_ALL` |
+| 13 | `ALLOW_EDITS` | Server | `ALLOW_EDIT_REFLECTION`, `ALLOW_EDIT_TIME`, `ALLOW_EDIT_BLOG` |
+| 14 | `ALLOW_DELETES` | Server | `ALLOW_DELETE_PROBLEM`, `ALLOW_DELETE_BLOG`, `ALLOW_DELETE_ALL` |
+| 15 | `SHOW_EDIT_LINKS` | Link | `SHOW_EDIT_REFLECTION`, `SHOW_EDIT_TIME`, `SHOW_EDIT_BLOG` |
+| 16 | `SHOW_DELETE_LINKS` | Link | `SHOW_DELETE_PROBLEM`, `SHOW_DELETE_BLOG`, `SHOW_DELETE_ALL` |
 
 ### How they combine
 

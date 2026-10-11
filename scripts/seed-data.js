@@ -1,6 +1,6 @@
 // The sample journal written by `npm run seed` (scripts/seed.js), so a fresh
 // local checkout has something to look at: reflections spread over the last
-// few weeks, some reviewed, and a small practice queue.
+// few weeks, some reviewed, a small practice queue and a few blog entries.
 //
 // Problem names, ratings and tags are the real Codeforces ones; the
 // reflections are short illustrative notes. Dates are relative (`daysAgo`), so
@@ -327,5 +327,61 @@ export const QUEUE = [
     problem: "1873G", name: "ABBC or BACB", rating: 1500,
     tags: ["constructive algorithms", "greedy"],
     daysAgo: 0
+  }
+];
+
+// Private blog entries: free-form notes in Markdown (`daysAgo` as above).
+export const BLOG = [
+  {
+    title: "Pair conditions: move each index to its own side",
+    daysAgo: 20,
+    tags: ["counting", "hashing", "1520D", "1541B"],
+    body: raw`Two problems this month looked different and were the same trick.
+
+## The pattern
+
+A condition on a pair $(i, j)$ that mixes both indices can often be rewritten so that everything about $i$ is on one side and everything about $j$ on the other:
+
+$$a_j - a_i = j - i \iff a_j - j = a_i - i$$
+
+After that each index has a **key**, and the answer is the number of pairs with equal keys.
+
+${"```"}cpp
+map<int, long long> seen;
+long long pairs = 0;
+for (int i = 0; i < n; i++) pairs += seen[a[i] - i]++;
+${"```"}
+
+## When it does not separate
+
+In *Pleasant Pairs* ($a_i \cdot a_j = i + j$) the variables do not separate, but the product is small (at most $2n$), so for a fixed $i$ only every $a_i$-th index can work.
+
+| Problem | Condition | Idea |
+|---|---|---|
+| 1520D | $a_j - a_i = j - i$ | key $a_i - i$, count equal keys |
+| 1541B | $a_i \cdot a_j = i + j$ | iterate over multiples of $a_i$ |
+
+> Before writing two nested loops, try to rewrite the condition.`
+  },
+  {
+    title: "Read the constraints before thinking",
+    daysAgo: 6,
+    tags: ["habits", "constraints"],
+    body: raw`Three of my slowest solves had the same cause: I started designing something clever while the limits were asking for brute force.
+
+- $n \le 50$ usually means a cubic solution is intended (1399C, 1409C).
+- "You do not have to minimise the number of operations" means one uniform operation is enough (1635C).
+- $t \le 2 \cdot 10^5$ with a small per-test input means **precompute once** (1513C).
+
+**Rule:** write the limits at the top of the scratch paper before the first idea.`
+  },
+  {
+    title: "Checklist for counting problems",
+    daysAgo: 0,
+    tags: ["counting", "checklist"],
+    body: raw`1. Is the complement easier to count? (1475C: all pairs of edges minus the clashing ones.)
+2. Can I count per element instead of per pair, and divide by the symmetry?
+3. Does the algorithm in the statement only depend on **positions**? Then simulate it and turn every comparison into a constraint (1436C).
+4. Check the formula on the first sample by hand before coding.`
   }
 ];

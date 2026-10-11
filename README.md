@@ -72,6 +72,8 @@ A Node.js + Express app that helps competitive programmers turn each difficult C
 3. **Reflect**: answer five questions (key observation, what made you stuck, pattern, future trigger, simplest implementation); it's saved to MongoDB.
 4. **Review**: spaced repetition brings each reflection back after 1, 3, 7, 14… days; grade yourself and the schedule adapts.
 5. **Progress**: search and filter your journal, and see where you get stuck most and which tags are slowest.
+6. **Blog** (the home page): write free-form notes in Markdown (a technique, a recurring mistake, a contest recap), laid out like Codeforces blog entries. Private, like everything else: only readable after logging in.
+7. **Profile**: a Codeforces-style card (handle, name, photo, average problem rating, reviews due) above the dashboard: today's numbers, the activity heatmap and recent reflections. Enter your Codeforces handle and press "Sync from Codeforces" to fill the card from your public profile: contest rating and rank, contribution, friends, last visit, registration date, name, place and avatar. Only that public profile is read (no submissions or contest history), and only when you press sync.
 
 ## Architecture
 
@@ -82,7 +84,9 @@ Express server
   ├── HTML/CSS/JS (public/)
   ├── REST API
   │    ├── GET /api/problems/:contestId/:index
-  │    └── /api/reflections
+  │    ├── /api/reflections
+  │    ├── /api/blog
+  │    └── /api/profile
   ├── Codeforces API client (server-side only)
   └── MongoDB repositories (local mongod, or MongoDB Atlas in production)
 ```
@@ -100,7 +104,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Locally the app connects to `mongodb://127.0.0.1:27017`, uses the `codereflections` database, and needs no login.
 
-- **Sample journal**: `npm run seed` writes the reflections, review history and practice queue from `scripts/seed-data.js` (real Codeforces problems, short illustrative notes, dated relative to today). It refuses to touch a journal that already has data; `npm run seed -- --force` replaces it. It only writes to a database on this machine.
+- **Sample journal**: `npm run seed` writes the reflections, review history, practice queue and a few blog entries from `scripts/seed-data.js` (real Codeforces problems, short illustrative notes, dated relative to today). It refuses to touch a journal that already has data; `npm run seed -- --force` replaces it. It only writes to a database on this machine.
 - **Stopping**: `npm run db:down` stops the database and keeps the data; `docker compose down -v` deletes it.
 - **Without Docker**: install [MongoDB Community](https://www.mongodb.com/docs/manual/installation/) and run it on the default port, or point `MONGODB_URI` at a free Atlas cluster.
 - **Settings**: `npm run dev`, `npm start` and `npm run seed` read a `.env` file in the project folder if there is one (git ignores it).
@@ -124,6 +128,8 @@ Optional environment variables:
 | `practice_queue` | Problems waiting to be solved, unique on `(contestId, index)`, ordered by integer `id` |
 | `review_state` | Spaced-repetition state per reflection (`reflectionId`) |
 | `review_log` | Every review grade given |
+| `blog_posts` | Private blog entries (title, Markdown body, tags), with an integer `id` |
+| `profile` | One document: the owner's handle, name, city, country and photo (a small image stored as a data URL), plus `codeforces`: what the last sync with Codeforces returned |
 | `counters` | Next integer id for `reflections` and `practice_queue` |
 
 Writes that touch several collections (deleting a problem, recording a review, adding several problems to the queue) run in a transaction on a replica set or Atlas cluster. A standalone `mongod` has no transactions, so there they run one after another.
@@ -187,17 +193,19 @@ off.
 |---|---|---|---|---|
 | Edit | Reflection | `ALLOW_EDIT_REFLECTION` | `SHOW_EDIT_REFLECTION` | Saving changes to an existing reflection. Links: "Edit" on a saved reflection, "Edit reflection" on Manage |
 | Edit | Time and date | `ALLOW_EDIT_TIME` | `SHOW_EDIT_TIME` | "Edit time" on Manage |
+| Edit | Blog entry | `ALLOW_EDIT_BLOG` | `SHOW_EDIT_BLOG` | Saving changes to an existing blog entry ("Edit" under an entry) |
 | Delete | One problem | `ALLOW_DELETE_PROBLEM` | `SHOW_DELETE_PROBLEM` | "Delete" on a Manage row (the problem and its reflection) |
-| Delete | Everything | `ALLOW_DELETE_ALL` | `SHOW_DELETE_ALL` | "Delete All" on Manage |
+| Delete | Blog entry | `ALLOW_DELETE_BLOG` | `SHOW_DELETE_BLOG` | "Delete" under a blog entry |
+| Delete | Everything | `ALLOW_DELETE_ALL` | `SHOW_DELETE_ALL` | "Delete All" on Manage (problems and reflections; blog entries are kept) |
 
 Group flags switch a whole type off at once:
 
 | Group flag | Same as turning off |
 |---|---|
-| `ALLOW_EDITS=false` | `ALLOW_EDIT_REFLECTION`, `ALLOW_EDIT_TIME` |
-| `ALLOW_DELETES=false` | `ALLOW_DELETE_PROBLEM`, `ALLOW_DELETE_ALL` |
-| `SHOW_EDIT_LINKS=false` | `SHOW_EDIT_REFLECTION`, `SHOW_EDIT_TIME` |
-| `SHOW_DELETE_LINKS=false` | `SHOW_DELETE_PROBLEM`, `SHOW_DELETE_ALL` |
+| `ALLOW_EDITS=false` | `ALLOW_EDIT_REFLECTION`, `ALLOW_EDIT_TIME`, `ALLOW_EDIT_BLOG` |
+| `ALLOW_DELETES=false` | `ALLOW_DELETE_PROBLEM`, `ALLOW_DELETE_BLOG`, `ALLOW_DELETE_ALL` |
+| `SHOW_EDIT_LINKS=false` | `SHOW_EDIT_REFLECTION`, `SHOW_EDIT_TIME`, `SHOW_EDIT_BLOG` |
+| `SHOW_DELETE_LINKS=false` | `SHOW_DELETE_PROBLEM`, `SHOW_DELETE_BLOG`, `SHOW_DELETE_ALL` |
 
 Examples: `ALLOW_DELETE_ALL=false` + `SHOW_DELETE_ALL=false` removes "Delete
 All" completely; `ALLOW_EDITS=false` + `ALLOW_DELETES=false` +
