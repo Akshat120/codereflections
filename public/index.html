@@ -108,6 +108,7 @@
         </button>
         <div class="nav-links" id="nav-links">
           <a class="nav-link active" href="/" data-route="home">HOME</a>
+          <a class="nav-link" href="/profile" data-route="profile">PROFILE</a>
           <a class="nav-link" href="/load" data-route="load">LOAD</a>
           <a class="nav-link" href="/problem" data-route="problem">PROBLEM</a>
           <a class="nav-link" href="/reflect" data-route="reflect">REFLECT</a>
@@ -127,12 +128,44 @@
 
   <div class="page-wrap">
     <main class="content-column">
-      <!-- HOME (CodeReflections Practice Hub) -->
-      <div class="app-page" data-page="home">
-        <header class="page-intro">
-          <h1 class="page-title">Dashboard</h1>
-          <p id="dash-date">Your practice at a glance.</p>
-        </header>
+            <!-- PROFILE: the owner's card and the practice dashboard -->
+      <div class="app-page hidden" data-page="profile">
+        <div class="profile-date" id="dash-date"></div>
+        <section class="roundbox profile-card">
+          <div class="profile-card-body">
+            <div class="profile-info" id="profile-info"></div>
+            <div class="profile-photo-box">
+              <div class="profile-photo" id="profile-photo"></div>
+              <div class="profile-photo-actions">
+                <button type="button" class="cf-row-action" id="profile-photo-change">Change photo</button>
+                <span id="profile-photo-sep" class="hidden">|</span>
+                <button type="button" class="cf-row-action hidden" id="profile-photo-unset">Unset photo</button>
+              </div>
+              <div class="profile-photo-status" id="profile-photo-status" role="status"></div>
+              <input type="file" id="profile-photo-input" accept="image/*" hidden>
+            </div>
+          </div>
+          <form id="profile-form" class="profile-form hidden">
+            <div class="profile-form-grid">
+              <label for="profile-handle">Codeforces handle</label>
+              <div class="profile-handle-row">
+                <input type="text" id="profile-handle" class="cf-input" maxlength="24" placeholder="e.g. tourist">
+                <button type="button" class="btn" id="profile-form-sync-btn" title="Fetch rating, rank, name, place and avatar from your public Codeforces profile">Sync from Codeforces</button>
+              </div>
+              <label for="profile-name">Name</label>
+              <input type="text" id="profile-name" class="cf-input" maxlength="60">
+              <label for="profile-city">City</label>
+              <input type="text" id="profile-city" class="cf-input" maxlength="60">
+              <label for="profile-country">Country</label>
+              <input type="text" id="profile-country" class="cf-input" maxlength="60">
+            </div>
+            <div class="blog-form-actions">
+              <button type="submit" class="btn primary">Save</button>
+              <button type="button" class="btn" id="profile-cancel-btn">Cancel</button>
+              <span id="profile-status" class="save-status"></span>
+            </div>
+          </form>
+        </section>
 
         <section class="roundbox">
           <div class="caption">Today</div>
@@ -926,6 +959,73 @@
           </div>
         </section>
       </div>
+
+      <!-- HOME: the private blog (notes laid out like Codeforces blog entries) -->
+      <div class="app-page" data-page="home">
+        <div id="blog-filter-notice" class="blog-filter-notice"></div>
+        <div id="blog-list"></div>
+      </div>
+
+      <!-- BLOG ENTRY -->
+      <div class="app-page hidden" data-page="blog-entry">
+        <div id="blog-entry-view"></div>
+        <p class="blog-back"><a href="/" data-route="home">← All blog entries</a></p>
+      </div>
+
+      <!-- BLOG EDIT (new entry, or ?id= to edit one) -->
+      <div class="app-page hidden" data-page="blog-edit">
+        <header class="page-intro">
+          <h1 class="page-title" id="blog-edit-heading">New blog entry</h1>
+          <p>Private: only you can read it, after logging in.</p>
+        </header>
+
+        <section class="roundbox">
+          <div class="caption" id="blog-edit-caption">Write</div>
+          <div class="roundbox-body">
+            <form id="blog-form">
+              <input type="hidden" id="blog-id" value="">
+              <div class="blog-field">
+                <label for="blog-title">Title</label>
+                <input type="text" id="blog-title" class="cf-input blog-title-input" maxlength="200" required
+                       placeholder="e.g. Counting pairs: move each index to its own side">
+              </div>
+              <div class="blog-field">
+                <label for="blog-body">Content</label>
+                <div class="md-editor-box" data-target="blog-body">
+                  <div class="md-editor-bar">
+                    <div class="md-tab-group">
+                      <button type="button" class="md-tab active" data-tab="write">Write</button>
+                      <button type="button" class="md-tab" data-tab="preview">Preview</button>
+                    </div>
+                    <div class="md-tools">
+                      <button type="button" class="md-btn" data-action="bold" title="Bold (**text**)"><b>B</b></button>
+                      <button type="button" class="md-btn" data-action="italic" title="Italic (*text*)"><i>I</i></button>
+                      <button type="button" class="md-btn" data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+                      <button type="button" class="md-btn" data-action="codeblock" title="Code block (```cpp...)">{ }</button>
+                      <button type="button" class="md-btn" data-action="math" title="Math ($O(N)$)">$fx$</button>
+                      <button type="button" class="md-btn" data-action="list" title="List (- item)">• List</button>
+                      <button type="button" class="md-btn" data-action="quote" title="Quote (> text)">&ldquo;</button>
+                    </div>
+                  </div>
+                  <textarea id="blog-body" class="cf-textarea md-textarea blog-body-input" maxlength="50000" required
+                            placeholder="What did you learn? Markdown, code blocks and $math$ are supported."></textarea>
+                  <div id="blog-body-preview" class="md-preview markdown-body ttypography hidden"></div>
+                  <div class="md-editor-hint">Markdown supported: <b>**bold**</b>, <i>*italic*</i>, <code># heading</code>, <code>`code`</code>, <code>```cpp</code>, <code>$O(N)$</code>, <code>- list</code>, <code>[link](https://…)</code>, tables</div>
+                </div>
+              </div>
+              <div class="blog-field">
+                <label for="blog-tags">Tags</label>
+                <input type="text" id="blog-tags" class="cf-input" placeholder="Comma-separated, e.g. dp, counting, 1513C">
+              </div>
+              <div class="blog-form-actions">
+                <button type="submit" class="btn primary" id="blog-save-btn">Save</button>
+                <a class="btn" id="blog-cancel-btn" href="/" data-route="home">Back</a>
+                <span id="blog-save-status" class="save-status"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
     </main>
 
     <!-- RIGHT SIDEBAR -->
@@ -1115,7 +1215,14 @@
         </div>
       </div>
 
-      <!-- Home-only widgets: weak spots -->
+      <!-- Profile and blog entry pages: latest blog entries -->
+      <div class="roundbox hidden" id="recent-blog-widget">
+        <div class="caption">Recent blog entries</div>
+        <div id="recent-blog-list"></div>
+        <div class="roundbox-footer side-note"><a href="/" data-route="home">All entries →</a> · <a href="/blog-edit" data-route="blog-edit">Write →</a></div>
+      </div>
+
+      <!-- Profile-only widgets: weak spots -->
       <div class="roundbox hidden" id="home-weak-reasons-widget">
         <div class="caption">Stuck reasons</div>
         <div id="dash-weak-reasons"></div>

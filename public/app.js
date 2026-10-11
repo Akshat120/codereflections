@@ -53,7 +53,8 @@ window.fetch = async (input, init) => {
 // responses from the shared reads above.
 function prefetchApiReads() {
   const reads = ["/api/stuck-reasons", "/api/queue", "/api/reflections"];
-  if (location.pathname === "/" || location.pathname === "/review") reads.push("/api/reviews");
+  if (location.pathname === "/profile" || location.pathname === "/review") reads.push("/api/reviews");
+  if (location.pathname === "/") reads.push("/api/blog");
   for (const url of reads) fetch(url).catch(() => {});
 }
 
@@ -409,7 +410,12 @@ const ROUTES = {
   "/review": { page: "review", title: "Review · CodeReflections" },
   "/stuck-reasons": { page: "stuck-reasons", title: "Stuck Reasons · CodeReflections" },
   "/tag-times": { page: "tag-times", title: "Tags by Time · CodeReflections" },
-  "/manage-problems": { page: "manage-problems", title: "Manage Problems · CodeReflections" }
+  "/manage-problems": { page: "manage-problems", title: "Manage Problems · CodeReflections" },
+  "/profile": { page: "profile", title: "Profile · CodeReflections" },
+  // The blog is the home page; /blog is kept for old links
+  "/blog": { page: "home", title: "CodeReflections" },
+  "/blog-entry": { page: "blog-entry", title: "Blog · CodeReflections" },
+  "/blog-edit": { page: "blog-edit", title: "Write · CodeReflections" }
 };
 
 // Form submission & control listeners
@@ -735,12 +741,14 @@ function navigate(path, { replace = false } = {}) {
     }
   }
 
-  if (["journal", "progress", "home", "stuck-reasons", "tag-times"].includes(activeRoute.page)) {
+  if (["journal", "progress", "profile", "stuck-reasons", "tag-times"].includes(activeRoute.page)) {
     loadHistory();
   }
 
-  if (activeRoute.page === "home") {
+  if (activeRoute.page === "profile") {
     renderDashboardReviews();
+    loadProfileView();
+    loadRecentBlogWidget();
   }
 
   if (activeRoute.page === "review") {
@@ -755,6 +763,23 @@ function navigate(path, { replace = false } = {}) {
 
   if (activeRoute.page === "manage-problems") {
     loadManageProblemsView();
+  }
+
+  if (activeRoute.page === "home") {
+    loadBlogView(search || "");
+  }
+
+  if (activeRoute.page === "blog-entry" || activeRoute.page === "blog-edit") {
+    const id = new URLSearchParams(search || "").get("id");
+    if (activeRoute.page === "blog-edit") {
+      loadBlogEditView(id);
+    } else if (id) {
+      loadBlogEntryView(id);
+    } else {
+      navigate("/", { replace: true });
+      return;
+    }
+    loadRecentBlogWidget();
   }
 
   if (activeRoute.page === "problem" || activeRoute.page === "reflect") {
@@ -783,14 +808,20 @@ function showPage(pageName) {
     manageFilter.classList.toggle("hidden", pageName !== "manage-problems");
   }
   for (const id of ["home-weak-reasons-widget", "home-weak-tags-widget"]) {
-    document.getElementById(id)?.classList.toggle("hidden", pageName !== "home");
+    document.getElementById(id)?.classList.toggle("hidden", pageName !== "profile");
   }
+  document.getElementById("recent-blog-widget")?.classList.toggle(
+    "hidden",
+    !["profile", "blog-entry", "blog-edit"].includes(pageName)
+  );
   syncProblemViews();
 }
 
 function setActiveNav(path) {
+  // An entry and the editor belong to the Blog tab
+  const navPath = path.startsWith("/blog") ? "/" : path;
   document.querySelectorAll(".nav-link[data-route]").forEach(link => {
-    link.classList.toggle("active", link.getAttribute("href") === path);
+    link.classList.toggle("active", link.getAttribute("href") === navPath);
   });
   const active = document.querySelector(".nav-link.active");
   const label = document.getElementById("nav-toggle-label");
@@ -1720,7 +1751,7 @@ function renderReviewCard() {
         <tr><td class="dash-count">${results.hard}</td><td>Hard — coming back sooner</td></tr>
         <tr><td class="dash-count">${results.forgot}</td><td>Forgot — coming back tomorrow</td></tr>
       </tbody></table>
-      <p style="margin-top: 12px;"><a class="btn" href="/" data-route="home">Back to dashboard</a></p>`;
+      <p style="margin-top: 12px;"><a class="btn" href="/profile" data-route="profile">Back to dashboard</a></p>`;
     return;
   }
 
@@ -3641,8 +3672,8 @@ function setupMarkdownEditors() {
         const val = textarea.value.trim();
         const isCodeField = (targetId === "q4" || targetId === "edit-q4");
         previewEl.innerHTML = val
-          ? (isCodeField ? renderCodeOnly(val) : renderMarkdown(val))
-          : '<div class="md-empty-preview">Nothing to preview yet. Switch to "Write" to add reflection notes.</div>';
+          ? (isCodeField ? renderCodeOnly(val) : targetId === "blog-body" ? renderBlogBody(val) : renderMarkdown(val))
+          : '<div class="md-empty-preview">Nothing to preview yet. Switch to "Write" to add some text.</div>';
         textarea.classList.add("hidden");
         textarea.style.display = "none";
         previewEl.classList.remove("hidden");
@@ -4509,6 +4540,574 @@ function initDbLatency() {
   }, 60000);
 }
 
+// ==========================================================================
+// Blog: private free-form notes, laid out like Codeforces blog entries
+// ==========================================================================
+const BLOG_PAGE_SIZE = 10;
+const BLOG_DRAFT_KEY = "cr_blog_draft";
+
+async function fetchBlogPosts() {
+  const res = await fetch("/api/blog");
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not load blog entries.");
+  return res.json();
+}
+
+// "3 days ago", like the dates on Codeforces
+function formatTimeAgo(iso) {
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  const units = [
+    ["year", 365 * 24 * 3600],
+    ["month", 30 * 24 * 3600],
+    ["week", 7 * 24 * 3600],
+    ["day", 24 * 3600],
+    ["hour", 3600],
+    ["minute", 60]
+  ];
+  for (const [name, size] of units) {
+    const count = Math.floor(seconds / size);
+    if (count >= 1) return `${count} ${name}${count === 1 ? "" : "s"} ago`;
+  }
+  return "just now";
+}
+
+function formatBlogDate(iso) {
+  return new Date(iso).toLocaleString(undefined, {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+  });
+}
+
+// Markdown, with fenced code shown like a Codeforces source listing
+function renderBlogBody(text) {
+  const holder = document.createElement("div");
+  holder.innerHTML = renderMarkdown(text);
+  holder.querySelectorAll(".md-code-wrapper").forEach(wrapper => {
+    const code = wrapper.querySelector("pre.md-code-block code");
+    if (!code) return;
+    const lang = (code.className.match(/language-([\w+-]+)/) || [])[1] || "";
+    wrapper.outerHTML = renderCodeOnly("```" + lang + "\n" + code.textContent + "\n```");
+  });
+  return holder.innerHTML;
+}
+
+// One entry: title, "By you, 3 days ago", the text beside a grey rule, tags,
+// and the footer bar. `clip` folds long entries in the list.
+function renderBlogEntry(post, { clip = false } = {}) {
+  const entryHref = `/blog-entry?id=${encodeURIComponent(post.id)}`;
+  const edited = post.updatedAt && post.updatedAt !== post.createdAt;
+  const tags = (post.tags || []).map(tag =>
+    `<a class="blog-tag" href="/?tag=${encodeURIComponent(tag)}" data-route="home">${escapeHtml(tag)}</a>`
+  ).join(", ");
+  return `
+    <article class="blog-entry" data-id="${escapeAttribute(post.id)}">
+      <div class="blog-entry-title"><a href="${entryHref}" data-route="blog-entry">${escapeHtml(post.title)}</a></div>
+      <div class="blog-entry-info">By <span class="blog-author">${escapeHtml(profileHandle())}</span>, <span title="${escapeAttribute(formatBlogDate(post.createdAt))}">${formatTimeAgo(post.createdAt)}</span>${edited ? `, <span title="${escapeAttribute(formatBlogDate(post.updatedAt))}">edited ${formatTimeAgo(post.updatedAt)}</span>` : ""}</div>
+      <div class="blog-entry-content${clip ? " is-clippable" : ""}">
+        <div class="ttypography markdown-body">${renderBlogBody(post.body)}</div>
+      </div>
+      ${clip ? `<div class="blog-read-more hidden"><a href="${entryHref}" data-route="blog-entry">Read more »</a></div>` : ""}
+      ${tags ? `<div class="blog-entry-tags">Tags ${tags}</div>` : ""}
+      <div class="roundbox blog-entry-meta">
+        <div class="blog-entry-actions">
+          <a class="cf-row-action flag-edit-blog" href="/blog-edit?id=${encodeURIComponent(post.id)}" data-route="blog-edit">Edit</a>
+          <button type="button" class="cf-row-action is-danger flag-delete-blog btn-delete-blog" data-id="${escapeAttribute(post.id)}" data-title="${escapeAttribute(post.title)}">Delete</button>
+        </div>
+        <div class="blog-entry-date">
+          <span class="blog-private" title="Only you can read this, after logging in">🔒 Private</span>
+          <span title="${escapeAttribute(formatBlogDate(post.createdAt))}">📅 ${formatTimeAgo(post.createdAt)}</span>
+        </div>
+      </div>
+    </article>`;
+}
+
+// Long entries are folded in the list; "Read more" opens the whole entry
+function clipLongBlogEntries(root) {
+  root.querySelectorAll(".blog-entry-content.is-clippable").forEach(content => {
+    const clipped = content.scrollHeight > content.clientHeight + 40;
+    content.classList.toggle("is-clipped", clipped);
+    content.classList.toggle("is-clippable", clipped);
+    content.nextElementSibling?.classList.toggle("hidden", !clipped);
+  });
+}
+
+async function loadBlogView(search = "") {
+  const listEl = document.getElementById("blog-list");
+  const noticeEl = document.getElementById("blog-filter-notice");
+  if (!listEl) return;
+  const params = new URLSearchParams(search);
+  const tag = (params.get("tag") || "").trim();
+  const page = Math.max(1, Number(params.get("page")) || 1);
+
+  let posts;
+  try {
+    [posts] = await Promise.all([fetchBlogPosts(), ensureProfile()]);
+  } catch (error) {
+    listEl.innerHTML = `<div class="roundbox"><div class="roundbox-body">${escapeHtml(error.message)}</div></div>`;
+    return;
+  }
+  renderRecentBlogWidget(posts);
+
+  const shown = tag ? posts.filter(post => (post.tags || []).includes(tag)) : posts;
+  noticeEl.innerHTML = tag
+    ? `Entries tagged <b>${escapeHtml(tag)}</b> (${shown.length}) · <a href="/" data-route="home">Show all</a>`
+    : "";
+
+  if (!shown.length) {
+    listEl.innerHTML = `<div class="roundbox"><div class="roundbox-body">${tag
+      ? "No entries with this tag."
+      : `No blog entries yet. <a href="/blog-edit" data-route="blog-edit">Write down something you learned today</a>, and it will be here to reread.`}</div></div>`;
+    return;
+  }
+
+  const pages = Math.ceil(shown.length / BLOG_PAGE_SIZE);
+  const current = Math.min(page, pages);
+  const pagePosts = shown.slice((current - 1) * BLOG_PAGE_SIZE, current * BLOG_PAGE_SIZE);
+  listEl.innerHTML = pagePosts.map(post => renderBlogEntry(post, { clip: true })).join("") +
+    buildPagination(current, pages, "Blog pages");
+  clipLongBlogEntries(listEl);
+
+  listEl.querySelectorAll(".cf-pagination a.cf-page").forEach(link => {
+    const next = new URLSearchParams();
+    if (tag) next.set("tag", tag);
+    if (link.dataset.page !== "1") next.set("page", link.dataset.page);
+    const query = next.toString();
+    link.setAttribute("href", `/${query ? `?${query}` : ""}`);
+    link.setAttribute("data-route", "home");
+  });
+}
+
+async function loadBlogEntryView(id) {
+  const viewEl = document.getElementById("blog-entry-view");
+  if (!viewEl) return;
+  viewEl.innerHTML = "";
+  try {
+    const res = await fetch(`/api/blog/${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not load this blog entry.");
+    const post = await res.json();
+    await ensureProfile();
+    viewEl.innerHTML = renderBlogEntry(post);
+    document.title = `${post.title} · CodeReflections`;
+  } catch (error) {
+    viewEl.innerHTML = `<div class="roundbox"><div class="roundbox-body">${escapeHtml(error.message)}</div></div>`;
+  }
+}
+
+function renderRecentBlogWidget(posts) {
+  const el = document.getElementById("recent-blog-list");
+  if (!el) return;
+  el.innerHTML = posts.length
+    ? `<table class="dash-table side-list"><tbody>${posts.slice(0, 5).map(post => `
+        <tr>
+          <td>
+            <a href="/blog-entry?id=${encodeURIComponent(post.id)}" data-route="blog-entry">${escapeHtml(post.title)}</a>
+            <div class="dash-muted dash-codes">${formatTimeAgo(post.createdAt)}</div>
+          </td>
+        </tr>`).join("")}</tbody></table>`
+    : `<div class="dash-muted side-empty">No blog entries yet.</div>`;
+}
+
+async function loadRecentBlogWidget() {
+  try {
+    renderRecentBlogWidget(await fetchBlogPosts());
+  } catch (_) {}
+}
+
+function setBlogSaveStatus(text, error = false) {
+  const el = document.getElementById("blog-save-status");
+  if (!el) return;
+  el.textContent = text;
+  el.className = error ? "save-status error" : "save-status";
+}
+
+function blogFormValues() {
+  return {
+    title: document.getElementById("blog-title").value.trim(),
+    body: document.getElementById("blog-body").value.trim(),
+    tags: [...new Set(document.getElementById("blog-tags").value.split(",").map(tag => tag.trim()).filter(Boolean))]
+  };
+}
+
+// The form for a new entry (restoring an unsaved draft) or, with an id, for
+// editing that entry
+async function loadBlogEditView(id) {
+  const form = document.getElementById("blog-form");
+  if (!form) return;
+  form.reset();
+  setBlogSaveStatus("");
+  form.querySelector('.md-tab[data-tab="write"]')?.click();
+
+  const editing = Boolean(id);
+  document.getElementById("blog-id").value = editing ? id : "";
+  document.getElementById("blog-edit-heading").textContent = editing ? "Edit blog entry" : "New blog entry";
+  document.getElementById("blog-cancel-btn").setAttribute("href", editing ? `/blog-entry?id=${encodeURIComponent(id)}` : "/");
+  document.getElementById("blog-cancel-btn").setAttribute("data-route", editing ? "blog-entry" : "home");
+
+  let values = null;
+  if (editing) {
+    try {
+      const res = await fetch(`/api/blog/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not load this blog entry.");
+      values = await res.json();
+    } catch (error) {
+      setBlogSaveStatus(error.message, true);
+      return;
+    }
+  } else {
+    try {
+      values = JSON.parse(localStorage.getItem(BLOG_DRAFT_KEY) || "null");
+      if (values) setBlogSaveStatus("Unsaved draft restored.");
+    } catch (_) {}
+  }
+  if (!values) return;
+  document.getElementById("blog-title").value = values.title || "";
+  document.getElementById("blog-body").value = values.body || "";
+  document.getElementById("blog-tags").value = (values.tags || []).join(", ");
+}
+
+async function saveBlogPost(event) {
+  event.preventDefault();
+  const id = document.getElementById("blog-id").value;
+  const button = document.getElementById("blog-save-btn");
+  button.disabled = true;
+  setBlogSaveStatus("Saving…");
+  try {
+    const res = await fetch(id ? `/api/blog/${encodeURIComponent(id)}` : "/api/blog", {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(blogFormValues())
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not save the blog entry.");
+    if (!id) localStorage.removeItem(BLOG_DRAFT_KEY);
+    setBlogSaveStatus("");
+    navigate(`/blog-entry?id=${encodeURIComponent(data.id)}`);
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  } catch (error) {
+    setBlogSaveStatus(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function deleteBlogPost(id, title) {
+  if (!confirm(`Delete the blog entry "${title}"? This cannot be undone.`)) return;
+  try {
+    const res = await fetch(`/api/blog/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not delete the blog entry.");
+    if (ROUTES[window.location.pathname]?.page === "home") {
+      loadBlogView(window.location.search);
+    } else {
+      navigate("/");
+    }
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function initBlog() {
+  const form = document.getElementById("blog-form");
+  if (!form) return;
+  form.addEventListener("submit", saveBlogPost);
+  // A new entry is kept as a draft in this browser until it is saved
+  form.addEventListener("input", () => {
+    if (document.getElementById("blog-id").value) return;
+    try {
+      localStorage.setItem(BLOG_DRAFT_KEY, JSON.stringify(blogFormValues()));
+    } catch (_) {}
+  });
+  document.addEventListener("click", event => {
+    const button = event.target.closest(".btn-delete-blog");
+    if (button) deleteBlogPost(button.dataset.id, button.dataset.title);
+  });
+}
+
+// ==========================================================================
+// Profile: the owner's card (laid out like a Codeforces profile) above the
+// practice dashboard
+// ==========================================================================
+const CF_RANKS = [
+  [1200, "Newbie"],
+  [1400, "Pupil"],
+  [1600, "Specialist"],
+  [1900, "Expert"],
+  [2100, "Candidate Master"],
+  [2300, "Master"],
+  [2400, "International Master"],
+  [2600, "Grandmaster"],
+  [3000, "International Grandmaster"],
+  [Infinity, "Legendary Grandmaster"]
+];
+const PROFILE_PHOTO_SIZE = 256;
+
+let profileCache = null;
+
+function rankTitle(rating) {
+  if (rating == null) return "Unrated";
+  return CF_RANKS.find(([below]) => rating < below)[1];
+}
+
+// "legendary grandmaster" (as Codeforces sends it) → "Legendary Grandmaster"
+function titleCase(text) {
+  return String(text).replace(/\b[a-z]/g, letter => letter.toUpperCase());
+}
+
+// Codeforces shows a recent visit as "online now"
+function formatLastVisit(iso) {
+  return Date.now() - new Date(iso).getTime() < 10 * 60 * 1000 ? "online now" : formatTimeAgo(iso);
+}
+
+async function fetchProfile() {
+  const res = await fetch("/api/profile");
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not load the profile.");
+  profileCache = await res.json();
+  return profileCache;
+}
+
+// Loaded once for the author name on blog entries; a failure just leaves "you"
+async function ensureProfile() {
+  if (!profileCache) await fetchProfile().catch(() => {});
+}
+
+// The name shown as the author of blog entries
+function profileHandle() {
+  return profileCache?.handle || "you";
+}
+
+async function loadProfileView() {
+  const infoEl = document.getElementById("profile-info");
+  if (!infoEl) return;
+  // Each part falls back to empty, so the card still shows what did load
+  const [profile, reflections, review, posts] = await Promise.all([
+    fetchProfile().catch(() => profileCache || {}),
+    fetch("/api/reflections").then(res => (res.ok ? res.json() : [])).catch(() => []),
+    fetchReviewData().catch(() => null),
+    fetchBlogPosts().catch(() => [])
+  ]);
+  renderProfileCard(profile, reflections, review, posts);
+}
+
+function renderProfileCard(profile, reflections, review, posts) {
+  const rated = reflections.filter(item => item.rating != null);
+  const avgRating = rated.length
+    ? Math.round(rated.reduce((sum, item) => sum + item.rating, 0) / rated.length)
+    : null;
+  const maxRating = rated.length ? Math.max(...rated.map(item => item.rating)) : null;
+  // After a sync the rank, colour and rating are the real Codeforces ones;
+  // before it they come from the problems in the journal
+  const cf = profile.codeforces;
+  const rankClass = ratingColorClass(cf ? cf.rating : avgRating);
+  const rank = cf ? (cf.rank ? titleCase(cf.rank) : "Unrated") : rankTitle(avgRating);
+  const handle = profile.handle || "you";
+  const totalSeconds = reflections.reduce((sum, item) => sum + (item.timeSpentSeconds || 0), 0);
+  const dates = reflections.map(solvedAtOf).sort((a, b) => a - b);
+  const due = review ? review.items.filter(isReviewDue).length : null;
+
+  const place = [profile.city, profile.country].filter(Boolean).map(escapeHtml).join(", ");
+  const who = [profile.name ? escapeHtml(profile.name) : "", place].filter(Boolean).join(", ");
+  const row = (icon, html) => `<li><span class="profile-icon" aria-hidden="true">${icon}</span><span>${html}</span></li>`;
+
+  document.getElementById("profile-info").innerHTML = `
+    <div class="profile-rank ${rankClass}">${escapeHtml(rank)}</div>
+    <h1 class="profile-handle ${rankClass}">${cf
+      ? `<a class="${rankClass}" href="https://codeforces.com/profile/${encodeURIComponent(cf.handle)}" target="_blank" rel="noopener" title="Open on Codeforces">${escapeHtml(handle)}</a>`
+      : escapeHtml(handle)}</h1>
+    <div class="profile-who">${who || `<span class="dash-muted">Add your Codeforces handle in "Change settings".</span>`}</div>
+    <ul class="profile-rows">
+      ${cf ? row("📈", `Contest rating: ${cf.rating == null
+        ? "unrated"
+        : `<b class="${rankClass}">${cf.rating}</b> <small>(max. <b class="${ratingColorClass(cf.maxRating)}">${escapeHtml(cf.maxRank || "")}, ${cf.maxRating}</b>)</small>`}`) : ""}
+      ${cf && cf.contribution != null ? row("⭐", `Contribution: <b class="${cf.contribution < 0 ? "rating-gray" : "rating-green"}">${cf.contribution > 0 ? "+" : ""}${cf.contribution}</b>`) : ""}
+      ${cf && cf.friendOfCount != null ? row("🌟", `Friend of: ${cf.friendOfCount.toLocaleString()} users`) : ""}
+      ${row("🎯", `Average problem rating: ${avgRating == null
+        ? "—"
+        : `<b class="${ratingColorClass(avgRating)}">${avgRating}</b> <small>(max. <b class="${ratingColorClass(maxRating)}">${maxRating}</b>)</small>`}`)}
+      ${row("📚", `<a href="/progress" data-route="progress">Problems reflected: ${reflections.length}</a>`)}
+      ${row("⏱️", `Time practised: ${formatDuration(totalSeconds)}`)}
+      ${row("🔁", due == null
+        ? "Due for review: —"
+        : `<a href="/review" data-route="review">Due for review: ${due}</a>`)}
+      ${row("⚙️", `<button type="button" class="cf-row-action" id="profile-settings-btn">Change settings</button>`)}
+    </ul>
+    ${cf && cf.lastOnlineAt ? `<div class="profile-line">Last visit: <b class="profile-recent">${formatLastVisit(cf.lastOnlineAt)}</b></div>` : ""}
+    ${cf && cf.registeredAt ? `<div class="profile-line">Registered: ${formatTimeAgo(cf.registeredAt)}</div>` : ""}
+    <div class="profile-line">Last reflection: ${dates.length ? `<b class="profile-recent">${formatTimeAgo(dates[dates.length - 1])}</b>` : "—"}</div>
+    <div class="profile-line">Journal started: ${dates.length ? formatTimeAgo(dates[0]) : "—"}</div>
+    <ul class="profile-rows">
+      ${row("📝", `<a href="/" data-route="home">Blog entries (${posts.length})</a>`)}
+      ${row("✍️", `<a href="/blog-edit" data-route="blog-edit">Write new entry</a>`)}
+    </ul>
+    <div class="profile-sync">${cf
+      ? `Codeforces data synced ${formatTimeAgo(cf.syncedAt)}. <button type="button" class="cf-row-action" id="profile-sync-btn" data-handle="${escapeAttribute(cf.handle)}">Sync again</button>`
+      : `Not linked to Codeforces. Enter your handle in "Change settings" and press "Sync from Codeforces".`}
+      <span id="profile-sync-status" role="status"></span></div>`;
+
+  const photoEl = document.getElementById("profile-photo");
+  // Your own picture wins; otherwise the Codeforces avatar from the last sync
+  const photo = profile.photo || (/^https:\/\//.test(cf?.photo || "") ? cf.photo : null);
+  photoEl.innerHTML = photo
+    ? `<img src="${escapeAttribute(photo)}" alt="Profile photo" referrerpolicy="no-referrer">`
+    : `<div class="profile-photo-empty">No photo</div>`;
+  // Codeforces' image server sometimes refuses an avatar: show that instead
+  // of a broken picture
+  photoEl.querySelector("img")?.addEventListener("error", () => {
+    photoEl.innerHTML = `<div class="profile-photo-empty">${profile.photo
+      ? "Photo could not be shown"
+      : "Codeforces did not send the avatar.<br>Use “Change photo” to upload one."}</div>`;
+  });
+  document.getElementById("profile-photo-unset").classList.toggle("hidden", !profile.photo);
+  document.getElementById("profile-photo-sep").classList.toggle("hidden", !profile.photo);
+}
+
+function setProfileStatus(text, error = false) {
+  const el = document.getElementById("profile-status");
+  if (!el) return;
+  el.textContent = text;
+  el.className = error ? "save-status error" : "save-status";
+}
+
+// Fetches the public Codeforces profile for this handle and stores it
+async function syncProfileFromCodeforces(handle) {
+  const res = await fetch("/api/profile/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ handle })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Could not sync with Codeforces.");
+  profileCache = data;
+  await loadProfileView();
+}
+
+async function saveProfile(changes) {
+  const res = await fetch("/api/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(changes)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Could not save the profile.");
+  profileCache = data;
+  await loadProfileView();
+}
+
+// Shrinks the chosen picture to a small centred square, so it fits in the
+// profile document
+function photoDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      const side = Math.min(image.naturalWidth, image.naturalHeight);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = PROFILE_PHOTO_SIZE;
+      canvas.getContext("2d").drawImage(
+        image,
+        (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side,
+        0, 0, PROFILE_PHOTO_SIZE, PROFILE_PHOTO_SIZE
+      );
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("That file is not an image this browser can read."));
+    };
+    image.src = url;
+  });
+}
+
+function initProfile() {
+  const form = document.getElementById("profile-form");
+  if (!form) return;
+  const fields = ["handle", "name", "city", "country"];
+
+  document.addEventListener("click", event => {
+    if (!event.target.closest("#profile-settings-btn")) return;
+    for (const field of fields) {
+      document.getElementById(`profile-${field}`).value = profileCache?.[field] || "";
+    }
+    setProfileStatus("");
+    form.classList.toggle("hidden");
+    if (!form.classList.contains("hidden")) document.getElementById("profile-handle").focus();
+  });
+
+  document.getElementById("profile-cancel-btn").addEventListener("click", () => form.classList.add("hidden"));
+
+  // "Sync from Codeforces" in the settings form (with the handle typed there)
+  const syncButton = document.getElementById("profile-form-sync-btn");
+  syncButton.addEventListener("click", async () => {
+    const handle = document.getElementById("profile-handle").value.trim();
+    if (!handle) {
+      setProfileStatus("Enter your Codeforces handle first.", true);
+      return;
+    }
+    syncButton.disabled = true;
+    setProfileStatus("Asking Codeforces…");
+    try {
+      await syncProfileFromCodeforces(handle);
+      setProfileStatus("");
+      form.classList.add("hidden");
+    } catch (error) {
+      setProfileStatus(error.message, true);
+    } finally {
+      syncButton.disabled = false;
+    }
+  });
+
+  // "Sync again" on the card (with the handle of the last sync)
+  document.addEventListener("click", async event => {
+    const button = event.target.closest("#profile-sync-btn");
+    if (!button) return;
+    const status = text => {
+      const el = document.getElementById("profile-sync-status");
+      if (el) el.textContent = text;
+    };
+    button.disabled = true;
+    status("Asking Codeforces…");
+    try {
+      await syncProfileFromCodeforces(button.dataset.handle);
+    } catch (error) {
+      button.disabled = false;
+      status(error.message);
+    }
+  });
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    try {
+      setProfileStatus("Saving…");
+      await saveProfile(Object.fromEntries(fields.map(field => [field, document.getElementById(`profile-${field}`).value])));
+      setProfileStatus("");
+      form.classList.add("hidden");
+    } catch (error) {
+      setProfileStatus(error.message, true);
+    }
+  });
+
+  const input = document.getElementById("profile-photo-input");
+  const photoStatus = text => { document.getElementById("profile-photo-status").textContent = text; };
+  document.getElementById("profile-photo-change").addEventListener("click", () => input.click());
+  input.addEventListener("change", async () => {
+    const file = input.files[0];
+    input.value = "";
+    if (!file) return;
+    try {
+      photoStatus("Saving…");
+      await saveProfile({ photo: await photoDataUrl(file) });
+      photoStatus("");
+    } catch (error) {
+      photoStatus(error.message);
+    }
+  });
+  document.getElementById("profile-photo-unset").addEventListener("click", async () => {
+    try {
+      await saveProfile({ photo: null });
+      photoStatus("");
+    } catch (error) {
+      photoStatus(error.message);
+    }
+  });
+}
+
 // Initial bootstrap
 // Shows "Log out" in the header when the server requires a password
 async function initSession() {
@@ -4537,6 +5136,8 @@ async function initApp() {
   renderProblemViews();
   updateTimer();
 
+  initBlog();
+  initProfile();
   initNavigation();
   setupMarkdownEditors();
 

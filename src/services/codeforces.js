@@ -62,3 +62,42 @@ async function getProblemset() {
     `Codeforces metadata unavailable: ${lastError?.message ?? "unknown error"}`
   );
 }
+
+const USER_INFO_URLS = [
+  "https://codeforces.com/api/user.info",
+  "https://mirror.codeforces.com/api/user.info"
+];
+
+// Public profile of a Codeforces user (rating, rank, avatar, ...), or null
+// when there is no user with this handle. Never cached: it is asked for only
+// when the owner presses "Sync".
+export async function getUserInfo(handle) {
+  let lastError;
+
+  for (const url of USER_INFO_URLS) {
+    try {
+      const response = await fetch(`${url}?handles=${encodeURIComponent(handle)}`, {
+        headers: {
+          "User-Agent": "CodeforcesProblemReflection/1.0"
+        }
+      });
+      // An unknown handle comes back as HTTP 400 with status FAILED
+      const data = await response.json().catch(() => null);
+
+      if (data?.status === "FAILED" && /not found/i.test(data.comment || "")) {
+        return null;
+      }
+      if (!response.ok || data?.status !== "OK") {
+        throw new Error(data?.comment || `Codeforces API HTTP ${response.status}`);
+      }
+
+      return data.result[0] ?? null;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    `Codeforces profile unavailable: ${lastError?.message ?? "unknown error"}`
+  );
+}

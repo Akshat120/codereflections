@@ -11,7 +11,7 @@ import { client, collections, initDb } from "../src/db/database.js";
 import { INTERVAL_DAYS, nextState } from "../src/repositories/reviewRepository.js";
 import { STUCK_REASON_KEYS } from "../src/stuckReasons.js";
 import { writeJournal } from "./lib/journal.js";
-import { QUEUE, REFLECTIONS } from "./seed-data.js";
+import { BLOG, QUEUE, REFLECTIONS } from "./seed-data.js";
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
@@ -121,6 +121,28 @@ function buildJournal(now) {
   return docs;
 }
 
+// Oldest first, so ids follow the order the entries were written in
+function buildBlogPosts(now) {
+  return [...BLOG].sort((a, b) => b.daysAgo - a.daysAgo).map((entry, n) => {
+    const at = timeAgo(now, entry.daysAgo, n + 5).toISOString();
+    return { id: n + 1, title: entry.title, body: entry.body, tags: entry.tags, createdAt: at, updatedAt: at };
+  });
+}
+
+// The blog is not part of the journal tables writeJournal knows about. It is
+// only filled when empty, or replaced with --force.
+async function writeBlogPosts(posts) {
+  if (force) await collections.blogPosts.deleteMany({});
+  if (await collections.blogPosts.countDocuments()) {
+    console.log("skip blog_posts: the blog already has entries");
+    return;
+  }
+  await collections.blogPosts.insertMany(posts);
+  const update = force ? { $set: { seq: posts.length } } : { $max: { seq: posts.length } };
+  await collections.counters.updateOne({ _id: "blog_posts" }, update, { upsert: true });
+  console.log(`ok  blog_posts: ${posts.length} of ${posts.length} rows`);
+}
+
 async function main() {
   const uri = (process.env.MONGODB_URI || "").trim();
   if (!isLocalUri(uri) && !allowRemote) {
@@ -131,10 +153,12 @@ async function main() {
     return;
   }
 
-  const docs = buildJournal(new Date());
+  const now = new Date();
+  const docs = buildJournal(now);
   console.log(`Target: MongoDB database "${collections.reflections.dbName}" (${uri ? "MONGODB_URI" : "local default"})`);
   await initDb({ waitForIndexes: true });
   if (await writeJournal(docs, { force })) {
+    await writeBlogPosts(buildBlogPosts(now));
     console.log("Done. The sample journal is in the database; open http://localhost:3000.");
   } else {
     process.exitCode = 1;

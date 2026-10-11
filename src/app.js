@@ -9,6 +9,8 @@ import { reflectionRoutes } from "./routes/reflections.js";
 import { queueRoutes } from "./routes/queue.js";
 import { manageRoutes } from "./routes/manage.js";
 import { reviewRoutes } from "./routes/reviews.js";
+import { blogRoutes } from "./routes/blog.js";
+import { profileRoutes } from "./routes/profile.js";
 import { STUCK_REASON_GROUPS } from "./stuckReasons.js";
 
 // The Express app, shared by the local server (src/server.js), the Vercel
@@ -40,7 +42,11 @@ const clientRoutes = [
   "/edit-reflection",
   "/manage-problems",
   "/stuck-reasons",
-  "/tag-times"
+  "/tag-times",
+  "/profile",
+  "/blog",
+  "/blog-entry",
+  "/blog-edit"
 ];
 
 // Security headers on every response (vercel.json sets the same ones for the
@@ -154,6 +160,8 @@ app.use("/api/reflections", reflectionRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/manage", manageRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/blog", blogRoutes);
+app.use("/api/profile", profileRoutes);
 
 app.use("/api", (_req, res) => {
   res.status(404).json({
