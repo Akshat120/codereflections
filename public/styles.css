@@ -5048,11 +5048,16 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
-.content-column .blog-entry-title a {
-  color: var(--cf-accent) !important;
+/* Codeforces' title blue (#3b5998), and the muted blue of its dark theme.
+   The selectors outrank the general link colours of both themes. */
+.content-column .blog-entry .blog-entry-title a[href][data-route] {
+  color: #3b5998 !important;
   text-decoration: none !important;
 }
-.content-column .blog-entry-title a:hover {
+[data-theme="dark"] .content-column .blog-entry .blog-entry-title a[href][data-route] {
+  color: #88a4c8 !important;
+}
+.content-column .blog-entry .blog-entry-title a[href][data-route]:hover {
   text-decoration: underline !important;
 }
 .blog-entry-info {
