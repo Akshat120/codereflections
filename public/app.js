@@ -3582,6 +3582,9 @@ function applyMarkdownToolbarAction(textarea, action) {
         replacement = `- List item`;
       }
       break;
+    case "spoiler":
+      replacement = `<spoiler summary="Title">\n${sel || "Hidden until the title is clicked."}\n</spoiler>`;
+      break;
     case "quote":
       if (sel) {
         replacement = sel.split("\n").map(l => l.startsWith("> ") ? l : `> ${l}`).join("\n");
@@ -3601,6 +3604,10 @@ function applyMarkdownToolbarAction(textarea, action) {
     else if (action === "italic") textarea.setSelectionRange(start + 1, start + 12);
     else if (action === "code") textarea.setSelectionRange(start + 1, start + 5);
     else if (action === "math") textarea.setSelectionRange(start + 1, start + 5);
+  }
+  // Leave the title selected, ready to be typed over
+  if (action === "spoiler") {
+    textarea.setSelectionRange(start + 18, start + 23);
   }
 }
 
@@ -4576,8 +4583,47 @@ function formatBlogDate(iso) {
   });
 }
 
-// Markdown, with fenced code shown like a Codeforces source listing
+// A collapsible section inside an entry, written the Codeforces way:
+//   <spoiler summary="Title">
+//   ...Markdown...
+//   </spoiler>
+// Shown closed, as a title to click (the same element as the reflection
+// answers on Progress).
+const BLOG_SPOILER_PATTERN = /^[ \t]*<spoiler(?:[ \t]+summary="([^"\n]*)")?[ \t]*>[ \t]*\n([\s\S]*?)\n[ \t]*<\/spoiler>[ \t]*$/gm;
+
+function renderBlogSpoiler(title, body) {
+  return `<div class="spoiler">
+    <div class="spoiler-title">
+      <svg class="spoiler-arrow" viewBox="0 0 10 10"><polygon points="2,1 8,5 2,9"/></svg>
+      <span class="spoiler-label">${escapeHtml(title.trim() || "Spoiler")}</span>
+    </div>
+    <div class="spoiler-content ttypography markdown-body">${renderBlogMarkdown(body)}</div>
+  </div>`;
+}
+
+// Markdown plus the collapsible sections
 function renderBlogBody(text) {
+  if (typeof text !== "string") return renderBlogMarkdown(text);
+  // Fenced code is set aside first, so a <spoiler> shown as code stays code
+  const fences = [];
+  let src = text.replace(/\r\n?/g, "\n").replace(/^```[^\n]*\n[\s\S]*?\n```[ \t]*$/gm, fence => {
+    fences.push(fence);
+    return `@@BLOGFENCE${fences.length - 1}@@`;
+  });
+  const restoreFences = part => part.replace(/@@BLOGFENCE(\d+)@@/g, (_, n) => fences[n]);
+
+  const spoilers = [];
+  src = src.replace(BLOG_SPOILER_PATTERN, (_, title, body) => {
+    spoilers.push(renderBlogSpoiler(title || "", restoreFences(body)));
+    return `\n\n@@BLOGSPOILER${spoilers.length - 1}@@\n\n`;
+  });
+
+  return renderBlogMarkdown(restoreFences(src))
+    .replace(/<p class="md-p">@@BLOGSPOILER(\d+)@@<\/p>|@@BLOGSPOILER(\d+)@@/g, (_, a, b) => spoilers[a ?? b]);
+}
+
+// Markdown, with fenced code shown like a Codeforces source listing
+function renderBlogMarkdown(text) {
   const holder = document.createElement("div");
   holder.innerHTML = renderMarkdown(text);
   holder.querySelectorAll(".md-code-wrapper").forEach(wrapper => {

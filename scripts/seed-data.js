@@ -361,6 +361,15 @@ In *Pleasant Pairs* ($a_i \cdot a_j = i + j$) the variables do not separate, but
 | 1520D | $a_j - a_i = j - i$ | key $a_i - i$, count equal keys |
 | 1541B | $a_i \cdot a_j = i + j$ | iterate over multiples of $a_i$ |
 
+<spoiler summary="Why the multiples loop is fast enough">
+The values $a_i$ are distinct, so the total work is $\sum_i n / a_i \le n \cdot H_n = O(n \log n)$.
+
+${"```"}cpp
+for (int j = a[i] - i % a[i]; j <= n; j += a[i])
+    if (j > i && 1LL * a[i] * a[j] == i + j) count++;
+${"```"}
+</spoiler>
+
 > Before writing two nested loops, try to rewrite the condition.`
   },
   {
