@@ -766,7 +766,7 @@ function navigate(path, { replace = false } = {}) {
   }
 
   if (activeRoute.page === "home") {
-    loadBlogView(search || "");
+    loadBlogView();
   }
 
   if (activeRoute.page === "blog-entry" || activeRoute.page === "blog-edit") {
@@ -803,6 +803,7 @@ function showPage(pageName) {
   if (progressFilter) {
     progressFilter.classList.toggle("hidden", pageName !== "progress");
   }
+  document.getElementById("blog-filter-sidebar-widget")?.classList.toggle("hidden", pageName !== "home");
   const manageFilter = document.getElementById("manage-filter-sidebar-widget");
   if (manageFilter) {
     manageFilter.classList.toggle("hidden", pageName !== "manage-problems");
@@ -4551,6 +4552,8 @@ function initDbLatency() {
 // Blog: private free-form notes, laid out like Codeforces blog entries
 // ==========================================================================
 const BLOG_PAGE_SIZE = 10;
+const BLOG_PAGE_SIZES = [5, 10, 20, 50];
+const BLOG_PAGE_SIZE_KEY = "cr_blog_page_size";
 const BLOG_DRAFT_KEY = "cr_blog_draft";
 
 async function fetchBlogPosts() {
@@ -4675,50 +4678,128 @@ function clipLongBlogEntries(root) {
   });
 }
 
-async function loadBlogView(search = "") {
-  const listEl = document.getElementById("blog-list");
-  const noticeEl = document.getElementById("blog-filter-notice");
-  if (!listEl) return;
-  const params = new URLSearchParams(search);
-  const tag = (params.get("tag") || "").trim();
-  const page = Math.max(1, Number(params.get("page")) || 1);
+// The feed is driven by the address: /?q=<search>&tag=<tag>&page=<n>, so a
+// search can be bookmarked and the browser's back button undoes it. The
+// number of entries per page is a preference kept in this browser.
+let blogPostsCache = [];
+let blogPageSize = BLOG_PAGE_SIZE;
+try {
+  const saved = Number(localStorage.getItem(BLOG_PAGE_SIZE_KEY));
+  if (BLOG_PAGE_SIZES.includes(saved)) blogPageSize = saved;
+} catch (_) {}
 
-  let posts;
+function blogFeedQuery(search = window.location.search) {
+  const params = new URLSearchParams(search);
+  return {
+    q: (params.get("q") || "").trim(),
+    tag: (params.get("tag") || "").trim(),
+    page: Math.max(1, Number(params.get("page")) || 1)
+  };
+}
+
+function blogFeedUrl({ q = "", tag = "", page = 1 }) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (tag) params.set("tag", tag);
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return `/${query ? `?${query}` : ""}`;
+}
+
+// Every word of the search must appear in the title, the text or the tags
+function blogPostMatches(post, q) {
+  const haystack = `${post.title}\n${post.body}\n${(post.tags || []).join(" ")}`.toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(word => haystack.includes(word));
+}
+
+async function loadBlogView() {
+  const listEl = document.getElementById("blog-list");
+  if (!listEl) return;
+
   try {
-    [posts] = await Promise.all([fetchBlogPosts(), ensureProfile()]);
+    [blogPostsCache] = await Promise.all([fetchBlogPosts(), ensureProfile()]);
   } catch (error) {
     listEl.innerHTML = `<div class="roundbox"><div class="roundbox-body">${escapeHtml(error.message)}</div></div>`;
     return;
   }
-  renderRecentBlogWidget(posts);
+  renderRecentBlogWidget(blogPostsCache);
+  renderBlogFeed();
+}
 
-  const shown = tag ? posts.filter(post => (post.tags || []).includes(tag)) : posts;
-  noticeEl.innerHTML = tag
-    ? `Entries tagged <b>${escapeHtml(tag)}</b> (${shown.length}) · <a href="/" data-route="home">Show all</a>`
+// Draws the feed for the current address from the loaded entries
+function renderBlogFeed() {
+  const listEl = document.getElementById("blog-list");
+  const noticeEl = document.getElementById("blog-filter-notice");
+  const posts = blogPostsCache;
+  const { q, tag, page } = blogFeedQuery();
+  syncBlogFilterControls(posts, { q, tag });
+
+  const shown = posts.filter(post =>
+    (!tag || (post.tags || []).includes(tag)) && (!q || blogPostMatches(post, q)));
+
+  const filters = [
+    q ? `matching <b>${escapeHtml(q)}</b>` : "",
+    tag ? `tagged <b>${escapeHtml(tag)}</b>` : ""
+  ].filter(Boolean).join(", ");
+  noticeEl.innerHTML = filters
+    ? `${shown.length} ${shown.length === 1 ? "entry" : "entries"} ${filters} · <a href="/" data-route="home">Show all</a>`
     : "";
+  const countEl = document.getElementById("blog-filter-count");
+  if (countEl) {
+    countEl.textContent = shown.length === posts.length
+      ? `Showing all ${posts.length} ${posts.length === 1 ? "entry" : "entries"}`
+      : `Showing ${shown.length} of ${posts.length} entries`;
+  }
 
   if (!shown.length) {
-    listEl.innerHTML = `<div class="roundbox"><div class="roundbox-body">${tag
-      ? "No entries with this tag."
+    listEl.innerHTML = `<div class="roundbox"><div class="roundbox-body">${filters
+      ? "No blog entries match."
       : `No blog entries yet. <a href="/blog-edit" data-route="blog-edit">Write down something you learned today</a>, and it will be here to reread.`}</div></div>`;
     return;
   }
 
-  const pages = Math.ceil(shown.length / BLOG_PAGE_SIZE);
+  const pages = Math.ceil(shown.length / blogPageSize);
   const current = Math.min(page, pages);
-  const pagePosts = shown.slice((current - 1) * BLOG_PAGE_SIZE, current * BLOG_PAGE_SIZE);
+  const pagePosts = shown.slice((current - 1) * blogPageSize, current * blogPageSize);
   listEl.innerHTML = pagePosts.map(post => renderBlogEntry(post, { clip: true })).join("") +
     buildPagination(current, pages, "Blog pages");
   clipLongBlogEntries(listEl);
 
   listEl.querySelectorAll(".cf-pagination a.cf-page").forEach(link => {
-    const next = new URLSearchParams();
-    if (tag) next.set("tag", tag);
-    if (link.dataset.page !== "1") next.set("page", link.dataset.page);
-    const query = next.toString();
-    link.setAttribute("href", `/${query ? `?${query}` : ""}`);
+    link.setAttribute("href", blogFeedUrl({ q, tag, page: Number(link.dataset.page) }));
     link.setAttribute("data-route", "home");
   });
+}
+
+// Keeps the sidebar's filter box in step with the address (and the tag list
+// with the entries), without disturbing a search box that is being typed in
+function syncBlogFilterControls(posts, { q, tag }) {
+  const searchInput = document.getElementById("blog-search-input");
+  const tagSelect = document.getElementById("blog-tag-filter");
+  const sizeSelect = document.getElementById("blog-page-size");
+  if (!searchInput || !tagSelect || !sizeSelect) return;
+
+  if (document.activeElement !== searchInput) searchInput.value = q;
+
+  const counts = new Map();
+  for (const post of posts) {
+    for (const name of post.tags || []) counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  const names = [...counts.keys()].sort((a, b) => a.localeCompare(b));
+  if (tag && !counts.has(tag)) names.unshift(tag);
+  tagSelect.innerHTML = `<option value="">All tags (${counts.size})</option>` + names.map(name =>
+    `<option value="${escapeAttribute(name)}">${escapeHtml(name)} (${counts.get(name) || 0})</option>`).join("");
+  tagSelect.value = tag;
+  sizeSelect.value = String(blogPageSize);
+}
+
+// Applies the filter box: the address changes (without a new history entry
+// per keystroke) and the feed is redrawn from the entries already loaded
+function applyBlogFilters() {
+  const q = document.getElementById("blog-search-input").value.trim();
+  const tag = document.getElementById("blog-tag-filter").value;
+  history.replaceState({ path: blogFeedUrl({ q, tag }) }, "", blogFeedUrl({ q, tag }));
+  renderBlogFeed();
 }
 
 async function loadBlogEntryView(id) {
@@ -4840,7 +4921,7 @@ async function deleteBlogPost(id, title) {
     const res = await fetch(`/api/blog/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not delete the blog entry.");
     if (ROUTES[window.location.pathname]?.page === "home") {
-      loadBlogView(window.location.search);
+      loadBlogView();
     } else {
       navigate("/");
     }
@@ -4863,6 +4944,36 @@ function initBlog() {
   document.addEventListener("click", event => {
     const button = event.target.closest(".btn-delete-blog");
     if (button) deleteBlogPost(button.dataset.id, button.dataset.title);
+  });
+
+  // Sidebar filter box on the home page
+  const filterForm = document.getElementById("blog-filter-form");
+  if (!filterForm) return;
+  let typing;
+  document.getElementById("blog-search-input").addEventListener("input", () => {
+    clearTimeout(typing);
+    typing = setTimeout(applyBlogFilters, 200);
+  });
+  document.getElementById("blog-tag-filter").addEventListener("change", applyBlogFilters);
+  document.getElementById("blog-page-size").addEventListener("change", event => {
+    const size = Number(event.target.value);
+    if (!BLOG_PAGE_SIZES.includes(size)) return;
+    blogPageSize = size;
+    try {
+      localStorage.setItem(BLOG_PAGE_SIZE_KEY, String(size));
+    } catch (_) {}
+    applyBlogFilters();
+  });
+  filterForm.addEventListener("submit", event => {
+    event.preventDefault();
+    clearTimeout(typing);
+    applyBlogFilters();
+  });
+  document.getElementById("blog-btn-reset").addEventListener("click", () => {
+    clearTimeout(typing);
+    document.getElementById("blog-search-input").value = "";
+    document.getElementById("blog-tag-filter").value = "";
+    applyBlogFilters();
   });
 }
 

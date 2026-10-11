@@ -1173,6 +1173,43 @@
         </div>
       </div>
 
+      <!-- Filter blog entries (home page) -->
+      <div class="roundbox cf-filter-box hidden" id="blog-filter-sidebar-widget">
+        <div class="caption">Search blog</div>
+        <div class="roundbox-body cf-filter-body">
+          <form id="blog-filter-form" class="cf-filter-form">
+            <div class="cf-sidebar-filter-fields">
+              <div class="cf-filter-field cf-field-search">
+                <label for="blog-search-input" class="cf-filter-label">Search:</label>
+                <input type="search" id="blog-search-input" class="cf-input" placeholder="Title, text or tag…" autocomplete="off">
+              </div>
+              <div class="cf-filter-field cf-field-tag">
+                <label for="blog-tag-filter" class="cf-filter-label">Tag:</label>
+                <select id="blog-tag-filter" class="cf-select">
+                  <option value="">All tags</option>
+                </select>
+              </div>
+              <div class="cf-filter-field cf-field-page-size">
+                <label for="blog-page-size" class="cf-filter-label">Per page:</label>
+                <select id="blog-page-size" class="cf-select">
+                  <option value="5">5 entries</option>
+                  <option value="10">10 entries</option>
+                  <option value="20">20 entries</option>
+                  <option value="50">50 entries</option>
+                </select>
+              </div>
+            </div>
+            <div class="cf-filter-footer">
+              <div class="cf-filter-count" id="blog-filter-count">Loading entries…</div>
+              <div class="cf-filter-actions">
+                <button type="button" id="blog-btn-reset" class="btn" title="Clear the search and tag">Reset</button>
+                <button type="submit" class="btn primary">Apply</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <!-- Widget 5: Filter Database Problems (Under Your Progress on Manage page) -->
       <div class="roundbox cf-filter-box hidden" id="manage-filter-sidebar-widget">
         <div class="caption">Filter Problems</div>
