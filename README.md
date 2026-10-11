@@ -72,7 +72,7 @@ A Node.js + Express app that helps competitive programmers turn each difficult C
 3. **Reflect**: answer five questions (key observation, what made you stuck, pattern, future trigger, simplest implementation); it's saved to MongoDB.
 4. **Review**: spaced repetition brings each reflection back after 1, 3, 7, 14… days; grade yourself and the schedule adapts.
 5. **Progress**: search and filter your journal, and see where you get stuck most and which tags are slowest.
-6. **Blog** (the home page): write free-form notes in Markdown (a technique, a recurring mistake, a contest recap), laid out like Codeforces blog entries. Private, like everything else: only readable after logging in.
+6. **Blog** (the home page): write free-form notes in Markdown (a technique, a recurring mistake, a contest recap), laid out like Codeforces blog entries. Wrap part of an entry in `<spoiler summary="Title">` … `</spoiler>` (each tag on its own line) to fold it behind a title you click, e.g. to hide a solution until you've tried to recall it. Private, like everything else: only readable after logging in.
 7. **Profile**: a Codeforces-style card (handle, name, photo, average problem rating, reviews due) above the dashboard: today's numbers, the activity heatmap and recent reflections. Enter your Codeforces handle and press "Sync from Codeforces" to fill the card from your public profile: contest rating and rank, name, place and avatar. Only that public profile is read (no submissions or contest history), and only when you press sync.
 
 ## Architecture

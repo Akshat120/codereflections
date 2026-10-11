@@ -5417,3 +5417,15 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
     font-size: 22px;
   }
 }
+
+/* Collapsible sections inside a blog entry (<spoiler summary="…">) */
+.ttypography.markdown-body .spoiler {
+  margin: 0 0 12px;
+}
+.ttypography.markdown-body .spoiler-title {
+  font-family: var(--cf-font-typography);
+  font-size: 15px;
+}
+.ttypography.markdown-body .spoiler-content {
+  margin: 8px 0 0;
+}
