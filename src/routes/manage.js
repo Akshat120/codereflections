@@ -13,6 +13,7 @@ import {
   deleteAllQueue,
   updateQueueProblemTimeAndDate
 } from "../repositories/queueRepository.js";
+import { deleteAllLinks, deleteLinksOf } from "../repositories/linkRepository.js";
 import { parseContestId, parseProblemIndex } from "../validation.js";
 
 export const manageRoutes = Router();
@@ -99,6 +100,7 @@ manageRoutes.delete("/problems/:contestId/:index", requireAllowed("deleteProblem
     await withTransaction(async session => {
       await deleteReflection(contestId, index, { session });
       await deleteQueueProblem(contestId, index, { session });
+      await deleteLinksOf(contestId, index, { session });
     });
 
     return res.json({
@@ -117,6 +119,7 @@ manageRoutes.delete("/problems", requireAllowed("deleteAll"), async (_req, res) 
     await withTransaction(async session => {
       await deleteAllReflections({ session });
       await deleteAllQueue({ session });
+      await deleteAllLinks({ session });
     });
 
     return res.json({

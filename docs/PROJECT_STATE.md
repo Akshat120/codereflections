@@ -33,8 +33,8 @@ owner's card above the practice dashboard. One owner, one password.
 | `api/index.js` | Vercel serverless entry |
 | `src/entry.cloudflare.js` | Cloudflare Workers entry |
 | `src/db/database.js` | MongoDB client, collections, transactions, connection errors explained |
-| `src/repositories/` | Reflections, practice queue, reviews, blog entries, profile |
-| `src/routes/` | REST API (`/api/problems`, `/api/reflections`, `/api/queue`, `/api/manage`, `/api/reviews`, `/api/blog`, `/api/profile`) |
+| `src/repositories/` | Reflections, practice queue, reviews, problem links, blog entries, profile |
+| `src/routes/` | REST API (`/api/problems`, `/api/reflections`, `/api/queue`, `/api/manage`, `/api/reviews`, `/api/links`, `/api/blog`, `/api/profile`) |
 | `src/services/codeforces.js` | Codeforces API client (server-side): problem metadata, and the owner's public profile for the Profile card's sync |
 | `src/auth.js`, `src/passwordHash.js`, `src/loginLimiter.js` | Login, sessions, scrypt hashing, lock-out |
 | `public/` | Pages (`index.html` app, `login.html` landing + login), `app.js`, `styles.css`, icons |
@@ -44,7 +44,7 @@ owner's card above the practice dashboard. One owner, one password.
 | `docs/screenshots/` | Screenshots used in the README |
 
 Collections: `reflections`, `practice_queue`, `review_state`, `review_log`,
-`blog_posts`, `profile`, `counters`, `login_attempts` (see the README's data model).
+`blog_posts`, `problem_links`, `profile`, `counters`, `login_attempts` (see the README's data model).
 
 ## Deployments
 

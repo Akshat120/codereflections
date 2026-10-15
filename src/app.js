@@ -6,6 +6,7 @@ import { db, dbReady } from "./db/database.js";
 import { authRoutes, requireAuth } from "./auth.js";
 import { problemRoutes } from "./routes/problems.js";
 import { reflectionRoutes } from "./routes/reflections.js";
+import { linkRoutes } from "./routes/links.js";
 import { queueRoutes } from "./routes/queue.js";
 import { manageRoutes } from "./routes/manage.js";
 import { reviewRoutes } from "./routes/reviews.js";
@@ -157,6 +158,7 @@ app.get("/api/db-ping", async (_req, res) => {
 
 app.use("/api/problems", problemRoutes);
 app.use("/api/reflections", reflectionRoutes);
+app.use("/api/links", linkRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/manage", manageRoutes);
 app.use("/api/reviews", reviewRoutes);
