@@ -1581,6 +1581,13 @@ try {
   const saved = Number(localStorage.getItem(JOURNAL_PAGE_SIZE_KEY));
   if (JOURNAL_PAGE_SIZES.includes(saved)) journalPageSize = saved;
 } catch (_) {}
+// "Show related problems together": a display preference like the page size,
+// remembered in this browser and kept on Reset
+const JOURNAL_RELATED_KEY = "cr_progress_related";
+let journalShowRelated = false;
+try {
+  journalShowRelated = localStorage.getItem(JOURNAL_RELATED_KEY) === "1";
+} catch (_) {}
 let journalPage = 1;
 let lastJournalFilterKey = null;
 
@@ -2594,7 +2601,7 @@ function renderJournalEmpty(message) {
   }
 }
 
-function buildJournalTable(items, { compact = false } = {}) {
+function buildJournalTable(items, { compact = false, groupInfo = null } = {}) {
   return `
     <table class="journal-table">
       <thead>
@@ -2608,11 +2615,11 @@ function buildJournalTable(items, { compact = false } = {}) {
       </thead>
       <tbody>
         ${items.map(item => `
-          <tr class="journal-row" data-id="${item.id}" title="Click to view reflection notes">
+          <tr class="journal-row${groupRowClass(groupInfo?.get(item.id))}" data-id="${item.id}" title="Click to view reflection notes">
             <td class="col-code"><a href="${safeHref(item.problemUrl)}" target="_blank" rel="noopener" title="Open on Codeforces">${problemCode(item)}</a></td>
             <td class="col-rating ${ratingColorClass(item.rating)}" style="text-align: center;">${item.rating ?? "—"}</td>
             <td>
-              <b>${escapeHtml(item.problemName)}</b>
+              <b>${escapeHtml(item.problemName)}</b>${groupInfo?.get(item.id) ? relatedCountBadge(item) : ""}
             </td>
             <td class="col-time" style="text-align: center;">${isProblemTimeHidden(item.contestId, item.problemIndex) ? "--" : formatDuration(item.timeSpentSeconds)}</td>
             <td class="col-saved" style="text-align: center;">${formatSavedDate(item.createdAt || item.updatedAt)}</td>
@@ -3015,6 +3022,79 @@ async function removeRelatedLink(slot, code) {
   }
 }
 
+// Groups of linked problems: each problem code → the codes in its group
+// (linked directly or through other problems)
+function relatedGroups() {
+  const parent = new Map();
+  const find = code => {
+    while (parent.get(code) !== code) {
+      parent.set(code, parent.get(parent.get(code)));
+      code = parent.get(code);
+    }
+    return code;
+  };
+  for (const link of linksCache) {
+    const [a, b] = link.problems.map(linkCode);
+    for (const code of [a, b]) if (!parent.has(code)) parent.set(code, code);
+    parent.set(find(a), find(b));
+  }
+  const groups = new Map();
+  for (const code of parent.keys()) {
+    const root = find(code);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(code);
+  }
+  const groupOf = new Map();
+  for (const codes of groups.values()) for (const code of codes) groupOf.set(code, codes);
+  return groupOf;
+}
+
+// Adds the reflections in the same linked group as each result, and moves
+// each group's reflections together (at the place of its first one, in the
+// current sort order). Returns the items and, per reflection id in a group,
+// whether it starts or ends its group.
+function groupRelatedReflections(items) {
+  const groupOf = relatedGroups();
+  if (!groupOf.size) return { items, groupInfo: null };
+  const codeOf = item => `${item.contestId}${item.problemIndex}`;
+  const byCode = new Map(journalCache.map(item => [codeOf(item), item]));
+  const position = new Map(items.map((item, i) => [codeOf(item), i]));
+
+  const result = [];
+  const groupInfo = new Map();
+  const placed = new Set();
+  for (const item of items) {
+    const code = codeOf(item);
+    if (placed.has(code)) continue;
+    const members = (groupOf.get(code) || [code])
+      .map(c => byCode.get(c))
+      .filter(Boolean)
+      // results first, in the current order, then the added ones by code
+      .sort((a, b) => (position.get(codeOf(a)) ?? Infinity) - (position.get(codeOf(b)) ?? Infinity)
+        || a.contestId - b.contestId || a.problemIndex.localeCompare(b.problemIndex));
+    members.forEach((member, i) => {
+      placed.add(codeOf(member));
+      result.push(member);
+      if (members.length > 1) {
+        groupInfo.set(member.id, { first: i === 0, last: i === members.length - 1, added: !position.has(codeOf(member)) });
+      }
+    });
+  }
+  return { items: result, groupInfo };
+}
+
+function groupRowClass(info) {
+  if (!info) return "";
+  return ` in-related-group${info.first ? " related-group-first" : ""}${info.last ? " related-group-last" : ""}${info.added ? " related-group-added" : ""}`;
+}
+
+function relatedCountBadge(item) {
+  const related = relatedOf(item.contestId, item.problemIndex);
+  if (!related.length) return "";
+  const codes = related.map(r => linkCode(r.problem)).join(", ");
+  return ` <span class="related-count" title="Linked to ${escapeAttribute(codes)}">⇄ ${related.length}</span>`;
+}
+
 function initRelatedProblems() {
   document.addEventListener("click", event => {
     const target = event.target.closest(".related-open, .related-cancel, .related-unlink, .related-suggest-link");
@@ -3198,8 +3278,15 @@ function applyJournalFilters() {
     }
   });
 
+  // 4b. Related problems: add the reflections linked to each result (directly
+  // or through others) and list every linked group together
+  let groupInfo = null;
+  if (journalShowRelated) {
+    ({ items: filtered, groupInfo } = groupRelatedReflections(filtered));
+  }
+
   // 5. Pagination: back to page 1 when filters/sort change, clamp otherwise
-  const filterKey = JSON.stringify({ ...journalFilterState, pageSize: journalPageSize });
+  const filterKey = JSON.stringify({ ...journalFilterState, pageSize: journalPageSize, related: journalShowRelated });
   if (filterKey !== lastJournalFilterKey) {
     journalPage = 1;
     lastJournalFilterKey = filterKey;
@@ -3244,13 +3331,14 @@ function applyJournalFilters() {
         }
       }
     } else {
-      progressRoot.innerHTML = buildJournalTable(pageItems) + buildPagination(journalPage, totalPages);
+      progressRoot.innerHTML = buildJournalTable(pageItems, { groupInfo }) + buildPagination(journalPage, totalPages);
       attachJournalRowHandlers(progressRoot);
       refreshRelatedSlots(progressRoot);
       // A search for one problem opens its notes straight away
-      if (searchedCode && pageItems.length === 1) {
-        progressRoot.querySelector(`#journal-detail-${pageItems[0].id}`)?.classList.remove("hidden");
-        progressRoot.querySelector(`.journal-row[data-id="${pageItems[0].id}"]`)?.classList.add("expanded");
+      const searched = searchedCode && pageItems.find(item => `${item.contestId}${item.problemIndex}` === searchedCode);
+      if (searched) {
+        progressRoot.querySelector(`#journal-detail-${searched.id}`)?.classList.remove("hidden");
+        progressRoot.querySelector(`.journal-row[data-id="${searched.id}"]`)?.classList.add("expanded");
       }
       progressRoot.querySelectorAll(".cf-pagination a.cf-page").forEach(link => {
         link.addEventListener("click", (e) => {
@@ -3397,6 +3485,19 @@ function setupProgressFilterListeners() {
   if (sortSelect) {
     sortSelect.addEventListener("change", () => {
       journalFilterState.sortBy = sortSelect.value;
+      applyJournalFilters();
+    });
+  }
+
+  // Related problems together: remembered in this browser and kept on Reset
+  const relatedToggle = document.getElementById("progress-related-toggle");
+  if (relatedToggle) {
+    relatedToggle.checked = journalShowRelated;
+    relatedToggle.addEventListener("change", () => {
+      journalShowRelated = relatedToggle.checked;
+      try {
+        localStorage.setItem(JOURNAL_RELATED_KEY, journalShowRelated ? "1" : "0");
+      } catch (_) {}
       applyJournalFilters();
     });
   }
