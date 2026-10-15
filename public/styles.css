@@ -5434,3 +5434,56 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 .ttypography.markdown-body .spoiler-content {
   margin: 8px 0 0;
 }
+
+/* ==========================================================================
+   Related problems on a reflection (links between similar problems)
+   ========================================================================== */
+.related-slot { margin-top: 6px; font-size: 13px; }
+.related-problems {
+  border-top: 1px solid #e1e1e1;
+  padding-top: 8px;
+  margin-bottom: 4px;
+}
+.related-title,
+.related-suggest-title {
+  font-weight: bold;
+  color: #3b5998;
+  margin-bottom: 4px;
+}
+.related-suggest-title { color: #888; font-size: 12px; margin-top: 8px; }
+.related-list { list-style: none; margin: 0; padding: 0; }
+.related-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 3px 0;
+}
+.related-code { font-weight: bold; min-width: 52px; }
+.related-name { font-weight: bold; }
+.related-rating { font-size: 12px; font-weight: bold; }
+.related-note,
+.related-reason,
+.related-pending { color: #888; font-size: 12px; }
+.related-pending { font-style: italic; }
+.related-unlink,
+.related-suggest-link { margin-left: auto; font-size: 12px; }
+.content-column .related-slot a.related-unlink { color: #888 !important; }
+.related-actions { padding-top: 4px; font-size: 12px; }
+.related-form { border-top: 1px solid #e1e1e1; padding-top: 8px; }
+.related-form-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.related-form-row .related-input { flex: 1 1 180px; width: auto; }
+.related-form-row .related-note-input { flex: 2 1 220px; width: auto; }
+.related-form-row .btn { height: 24px; padding: 0 12px; }
+.related-status { color: #c00; font-size: 12px; margin-top: 4px; }
+.related-review-list .related-item { padding: 1px 0; }
+
+[data-theme="dark"] .related-problems,
+[data-theme="dark"] .related-form { border-top-color: #3a3f44; }
+[data-theme="dark"] .related-title { color: #88a4c8; }
+[data-theme="dark"] .related-note,
+[data-theme="dark"] .related-reason,
+[data-theme="dark"] .related-pending,
+[data-theme="dark"] .related-suggest-title { color: #9a9a9a; }
+[data-theme="dark"] .content-column .related-slot a.related-unlink { color: #9a9a9a !important; }
+[data-theme="dark"] .related-status { color: #ff7b72; }

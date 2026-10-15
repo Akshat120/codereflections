@@ -1619,7 +1619,7 @@ function buildPagination(current, total, label = "Reflections pages") {
 async function loadHistory() {
   setupProgressFilterListeners();
   try {
-    const response = await fetch("/api/reflections");
+    const [response] = await Promise.all([fetch("/api/reflections"), fetchLinks()]);
 
     if (!response.ok) {
       renderJournalEmpty("Could not load your journal right now.");
@@ -1683,7 +1683,7 @@ function formatDueDate(iso) {
 
 // Review states joined with their reflections (skips states whose reflection is gone)
 async function fetchReviewData() {
-  const [reviewsRes, reflectionsRes] = await Promise.all([fetch("/api/reviews"), fetch("/api/reflections")]);
+  const [reviewsRes, reflectionsRes] = await Promise.all([fetch("/api/reviews"), fetch("/api/reflections"), fetchLinks()]);
   if (!reviewsRes.ok || !reflectionsRes.ok) throw new Error("Could not load reviews.");
   const { intervals, reviews } = await reviewsRes.json();
   const byId = new Map((await reflectionsRes.json()).map(r => [r.id, r]));
@@ -1774,6 +1774,7 @@ function renderReviewCard() {
           <tr><th>Future trigger</th><td class="markdown-body">${renderMarkdown(r.futureTrigger)}</td></tr>
           <tr><th>Simplest implementation</th><td><details class="review-code"><summary>Show code</summary><div class="markdown-body spoiler-code-content">${renderCodeOnly(r.simplestImplementation)}</div></details></td></tr>
           <tr><th>Tags</th><td>${(r.tags || []).length ? r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(" ") : "—"}</td></tr>
+          ${relatedOf(r.contestId, r.problemIndex).length ? `<tr><th>Related problems</th><td>${relatedListHtml(r.contestId, r.problemIndex)}</td></tr>` : ""}
         </tbody>
       </table>
       <p class="review-grade-question">How well did you remember it?</p>
@@ -2673,6 +2674,7 @@ function buildJournalTable(items, { compact = false } = {}) {
                     </div>
                     <div class="spoiler-content spoiler-tags-content">${(item.tags && item.tags.length) ? `<div class="tags-list">${item.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>` : `<span class="readonly">—</span>`}</div>
                   </div>
+                  <div class="related-slot" data-id="${item.id}"></div>
                 </div>
               </div>
             </td>
@@ -2825,6 +2827,212 @@ function renderJournalTables(items) {
   journalCache = items || [];
   populateProgressTagFilter(journalCache);
   applyJournalFilters();
+}
+
+// ==========================================================================
+// Related problems: links between similar problems, shown on a reflection.
+// A link works both ways and may point at a problem without a reflection.
+// ==========================================================================
+let linksCache = [];
+
+async function fetchLinks() {
+  try {
+    const res = await fetch("/api/links");
+    linksCache = res.ok ? await res.json() : [];
+  } catch (_) {
+    linksCache = [];
+  }
+  return linksCache;
+}
+
+const linkCode = problem => `${problem.contestId}${problem.index}`;
+const linkProblemUrl = problem =>
+  `https://codeforces.com/problemset/problem/${problem.contestId}/${encodeURIComponent(problem.index)}`;
+
+// The reflections this page knows about (Progress loads the journal, Review its own copy)
+function knownReflections() {
+  if (journalCache.length) return journalCache;
+  return reviewSession ? reviewSession.items.map(item => item.reflection) : [];
+}
+
+function reflectionOfProblem(problem) {
+  return knownReflections().find(r => r.contestId === problem.contestId && r.problemIndex === problem.index) || null;
+}
+
+// [{ problem, note }] linked to one problem, in the order they were linked
+function relatedOf(contestId, index) {
+  return linksCache.flatMap(link => {
+    const at = link.problems.findIndex(p => p.contestId === Number(contestId) && p.index === index);
+    return at === -1 ? [] : [{ problem: link.problems[1 - at], note: link.note }];
+  });
+}
+
+// Significant words of a pattern, for comparing two of them
+function patternWords(text) {
+  return new Set(String(text || "").toLowerCase().match(/[a-z0-9]{4,}/g) || []);
+}
+
+function overlap(a, b) {
+  if (!a.size || !b.size) return { shared: [], score: 0 };
+  const shared = [...a].filter(x => b.has(x));
+  return { shared, score: shared.length / new Set([...a, ...b]).size };
+}
+
+// "Possibly similar": other reflections whose pattern uses mostly the same
+// words, or which share most of their tags (at least two)
+function suggestSimilar(item, limit = 5) {
+  const linked = new Set(relatedOf(item.contestId, item.problemIndex).map(r => linkCode(r.problem)));
+  const words = patternWords(item.pattern);
+  const tags = new Set(item.tags || []);
+  return knownReflections()
+    .filter(other => other.id !== item.id && !linked.has(`${other.contestId}${other.problemIndex}`))
+    .map(other => {
+      const pattern = overlap(words, patternWords(other.pattern));
+      const tag = overlap(tags, new Set(other.tags || []));
+      const patternScore = pattern.shared.length >= 2 && pattern.score >= 0.25 ? pattern.score * 2 : 0;
+      const tagScore = tag.shared.length >= 2 && tag.score >= 0.5 ? tag.score : 0;
+      const reasons = [];
+      if (patternScore) reasons.push("similar pattern");
+      if (tagScore) reasons.push(`shares ${tag.shared.join(", ")}`);
+      return { reflection: other, score: patternScore + tagScore, reason: reasons.join("; ") };
+    })
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+// One linked problem: its code (opens Codeforces), its name (opens the
+// reflection on Progress, or Codeforces when there is none yet) and the note
+function relatedItemHtml({ problem, note }, { editable }) {
+  const reflection = reflectionOfProblem(problem);
+  const code = linkCode(problem);
+  const name = reflection?.problemName || problem.name || "Problem " + code;
+  const rating = reflection ? reflection.rating : problem.rating;
+  const nameLink = reflection
+    ? `<a class="related-name" href="/progress?search=${encodeURIComponent(code)}" data-route="progress" title="Show the reflection">${escapeHtml(name)}</a>`
+    : `<a class="related-name" href="${safeHref(linkProblemUrl(problem))}" target="_blank" rel="noopener" title="No reflection yet: open on Codeforces">${escapeHtml(name)}</a> <span class="related-pending">not reflected yet</span>`;
+  return `
+    <li class="related-item">
+      <a class="related-code" href="${safeHref(linkProblemUrl(problem))}" target="_blank" rel="noopener" title="Open on Codeforces">${escapeHtml(code)}</a>
+      ${nameLink}
+      ${rating != null ? `<span class="related-rating ${ratingColorClass(rating)}">${rating}</span>` : ""}
+      ${note ? `<span class="related-note">— ${escapeHtml(note)}</span>` : ""}
+      ${editable ? `<a href="#" class="related-unlink flag-edit-reflection" data-code="${escapeAttribute(code)}" title="Unlink ${escapeAttribute(code)}">unlink</a>` : ""}
+    </li>`;
+}
+
+function relatedListHtml(contestId, index, { editable = false } = {}) {
+  const related = relatedOf(contestId, index);
+  if (!related.length) return "";
+  return `<ul class="related-list">${related.map(r => relatedItemHtml(r, { editable })).join("")}</ul>`;
+}
+
+// The "Related problems" part of a reflection in the journal table. With no
+// links only the "+ Link similar problem" action shows.
+function renderRelatedSlot(slot, { open = false } = {}) {
+  const item = journalCache.find(r => String(r.id) === slot.dataset.id);
+  if (!item) return;
+  const list = relatedListHtml(item.contestId, item.problemIndex, { editable: true });
+  const suggestions = open ? suggestSimilar(item) : [];
+  slot.innerHTML = `
+    ${list ? `<div class="related-problems"><div class="related-title">Related problems</div>${list}</div>` : ""}
+    <div class="related-actions${open ? " hidden" : ""}"><a href="#" class="related-open">+ Link similar problem</a></div>
+    <form class="related-form${open ? "" : " hidden"}" autocomplete="off">
+      <div class="related-form-row">
+        <input type="text" class="cf-input related-input" name="problem" placeholder="Problem code or link, e.g. 1915D" maxlength="200" required>
+        <input type="text" class="cf-input related-note-input" name="note" placeholder="Why similar? (optional)" maxlength="300">
+        <button type="submit" class="btn related-submit">Link</button>
+        <a href="#" class="related-cancel">Cancel</a>
+      </div>
+      <div class="related-status hidden"></div>
+      ${suggestions.length ? `
+        <div class="related-suggest">
+          <div class="related-suggest-title">Possibly similar</div>
+          <ul class="related-list">
+            ${suggestions.map(s => `
+              <li class="related-item">
+                <span class="related-code">${problemCode(s.reflection)}</span>
+                <span class="related-name">${escapeHtml(s.reflection.problemName || "")}</span>
+                <span class="related-reason">${escapeHtml(s.reason)}</span>
+                <a href="#" class="related-suggest-link" data-code="${problemCode(s.reflection)}">Link</a>
+              </li>`).join("")}
+          </ul>
+        </div>` : ""}
+    </form>`;
+  if (open) slot.querySelector(".related-input")?.focus();
+}
+
+function refreshRelatedSlots(root = document) {
+  root.querySelectorAll(".related-slot").forEach(slot => renderRelatedSlot(slot));
+}
+
+function setRelatedStatus(slot, message) {
+  const status = slot.querySelector(".related-status");
+  if (!status) return;
+  status.textContent = message || "";
+  status.classList.toggle("hidden", !message);
+}
+
+async function addRelatedLink(slot, rawProblem, note) {
+  const item = journalCache.find(r => String(r.id) === slot.dataset.id);
+  const to = parseCodeforcesUrl(rawProblem);
+  if (!item) return;
+  if (!to || !Number.isInteger(to.contestId)) {
+    setRelatedStatus(slot, "Enter a problem code like 1915D or a Codeforces problem link.");
+    return;
+  }
+  const button = slot.querySelector(".related-submit");
+  if (button) button.disabled = true;
+  try {
+    const res = await fetch("/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: { contestId: item.contestId, index: item.problemIndex }, to, note })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not link the problems.");
+    linksCache.push(data);
+    refreshRelatedSlots();
+  } catch (error) {
+    setRelatedStatus(slot, error.message);
+    if (button) button.disabled = false;
+  }
+}
+
+async function removeRelatedLink(slot, code) {
+  const item = journalCache.find(r => String(r.id) === slot.dataset.id);
+  const other = parseCodeforcesUrl(code);
+  if (!item || !other) return;
+  if (!confirm(`Unlink ${item.contestId}${item.problemIndex} and ${code}?`)) return;
+  try {
+    const res = await fetch(`/api/links/${item.contestId}/${encodeURIComponent(item.problemIndex)}/${other.contestId}/${encodeURIComponent(other.index)}`, { method: "DELETE" });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not unlink the problems.");
+    const ends = [`${item.contestId}${item.problemIndex}`, code];
+    linksCache = linksCache.filter(link => !link.problems.every(p => ends.includes(linkCode(p))));
+    refreshRelatedSlots();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function initRelatedProblems() {
+  document.addEventListener("click", event => {
+    const target = event.target.closest(".related-open, .related-cancel, .related-unlink, .related-suggest-link");
+    const slot = target?.closest(".related-slot");
+    if (!slot) return;
+    event.preventDefault();
+    if (target.classList.contains("related-open")) renderRelatedSlot(slot, { open: true });
+    else if (target.classList.contains("related-cancel")) renderRelatedSlot(slot);
+    else if (target.classList.contains("related-unlink")) removeRelatedLink(slot, target.dataset.code);
+    else addRelatedLink(slot, target.dataset.code, slot.querySelector(".related-note-input")?.value.trim() || "");
+  });
+  document.addEventListener("submit", event => {
+    const form = event.target.closest(".related-form");
+    const slot = form?.closest(".related-slot");
+    if (!slot) return;
+    event.preventDefault();
+    addRelatedLink(slot, form.elements.problem.value, form.elements.note.value.trim());
+  });
 }
 
 function populateProgressTagFilter(items) {
@@ -3032,6 +3240,7 @@ function applyJournalFilters() {
     } else {
       progressRoot.innerHTML = buildJournalTable(pageItems) + buildPagination(journalPage, totalPages);
       attachJournalRowHandlers(progressRoot);
+      refreshRelatedSlots(progressRoot);
       progressRoot.querySelectorAll(".cf-pagination a.cf-page").forEach(link => {
         link.addEventListener("click", (e) => {
           e.preventDefault();
@@ -5283,6 +5492,7 @@ async function initApp() {
 
   initBlog();
   initProfile();
+  initRelatedProblems();
   initNavigation();
   setupMarkdownEditors();
 

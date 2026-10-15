@@ -71,7 +71,7 @@ A Node.js + Express app that helps competitive programmers turn each difficult C
 2. **Solve**: work on it while the app tracks the time spent.
 3. **Reflect**: answer five questions (key observation, what made you stuck, pattern, future trigger, simplest implementation); it's saved to MongoDB.
 4. **Review**: spaced repetition brings each reflection back after 1, 3, 7, 14… days; grade yourself and the schedule adapts.
-5. **Progress**: search and filter your journal, and see where you get stuck most and which tags are slowest.
+5. **Progress**: search and filter your journal, and see where you get stuck most and which tags are slowest. Open a reflection and press "+ Link similar problem" to link it to another problem (a code like `1915D` or a Codeforces link, with an optional note on why they're alike). Links work both ways and may point at problems you haven't reflected on yet; the form also suggests reflections with a similar pattern or mostly the same tags. A reflection with links shows them under "Related problems", and so does its review card.
 6. **Blog** (the home page): write free-form notes in Markdown (a technique, a recurring mistake, a contest recap), laid out like Codeforces blog entries. The feed is paginated, and the "Search blog" box in the sidebar searches titles, text and tags, filters by tag and sets how many entries a page shows. Wrap part of an entry in `<spoiler summary="Title">` … `</spoiler>` (each tag on its own line) to fold it behind a title you click, e.g. to hide a solution until you've tried to recall it. Private, like everything else: only readable after logging in.
 7. **Profile**: a Codeforces-style card (handle, name, photo, average problem rating, reviews due) above the dashboard: today's numbers, the activity heatmap and recent reflections. Enter your Codeforces handle and press "Sync from Codeforces" to fill the card from your public profile: contest rating and rank, name, place and avatar. Only that public profile is read (no submissions or contest history), and only when you press sync.
 
@@ -85,6 +85,7 @@ Express server
   ├── REST API
   │    ├── GET /api/problems/:contestId/:index
   │    ├── /api/reflections
+  │    ├── /api/links
   │    ├── /api/blog
   │    └── /api/profile
   ├── Codeforces API client (server-side only)
@@ -129,6 +130,7 @@ Optional environment variables:
 | `review_state` | Spaced-repetition state per reflection (`reflectionId`) |
 | `review_log` | Every review grade given |
 | `blog_posts` | Private blog entries (title, Markdown body, tags), with an integer `id` |
+| `problem_links` | Links between similar problems: the two problems (code, name, rating) and a note; the `_id` is the pair, e.g. `1520D\|1915D` |
 | `profile` | One document: the owner's handle, name, city, country and photo (a small image stored as a data URL), plus `codeforces`: what the last sync with Codeforces returned |
 | `counters` | Next integer id for `reflections` and `practice_queue` |
 
