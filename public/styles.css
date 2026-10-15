@@ -5487,3 +5487,31 @@ html.hide-delete-all .flag-delete-all { display: none !important; }
 [data-theme="dark"] .related-suggest-title { color: #9a9a9a; }
 [data-theme="dark"] .content-column .related-slot a.related-unlink { color: #9a9a9a !important; }
 [data-theme="dark"] .related-status { color: #ff7b72; }
+
+/* Progress: "Show related problems together" */
+.cf-filter-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #444;
+  cursor: pointer;
+}
+.cf-filter-check input { margin: 0; }
+.journal-table tr.in-related-group > td:first-child { box-shadow: inset 3px 0 0 #3b5998; }
+.journal-table tr.related-group-first > td { border-top: 2px solid #c5d0e6; }
+.journal-table tr.related-group-added > td { background-color: #f6f8fc; }
+.related-count {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #3b5998;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .cf-filter-check { color: #d8d8d8; }
+[data-theme="dark"] .journal-table tr.in-related-group > td:first-child { box-shadow: inset 3px 0 0 #88a4c8; }
+[data-theme="dark"] .journal-table tr.related-group-first > td { border-top: 2px solid #3a4a63; }
+[data-theme="dark"] .journal-table tr.related-group-added > td { background-color: #23282e; }
+[data-theme="dark"] .related-count { color: #88a4c8; }
