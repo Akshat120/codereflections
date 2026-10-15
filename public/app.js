@@ -3090,7 +3090,13 @@ function applyJournalFilters() {
 
   // 1. Search Query
   const q = (journalFilterState.search || "").trim().toLowerCase();
-  if (q) {
+  // Exactly a problem code ("1447B", "1447 B", "1447/B"): that problem only,
+  // not every reflection whose notes mention it
+  const codeMatch = /^(\d+)\s*\/?\s*([a-z][0-9a-z]{0,4})$/.exec(q);
+  const searchedCode = codeMatch ? `${Number(codeMatch[1])}${codeMatch[2].toUpperCase()}` : null;
+  if (searchedCode) {
+    filtered = filtered.filter(item => `${item.contestId}${item.problemIndex}` === searchedCode);
+  } else if (q) {
     filtered = filtered.filter(item => {
       const code = `${item.contestId}${item.problemIndex}`.toLowerCase();
       const codeSpaced = `${item.contestId} ${item.problemIndex}`.toLowerCase();
@@ -3241,6 +3247,11 @@ function applyJournalFilters() {
       progressRoot.innerHTML = buildJournalTable(pageItems) + buildPagination(journalPage, totalPages);
       attachJournalRowHandlers(progressRoot);
       refreshRelatedSlots(progressRoot);
+      // A search for one problem opens its notes straight away
+      if (searchedCode && pageItems.length === 1) {
+        progressRoot.querySelector(`#journal-detail-${pageItems[0].id}`)?.classList.remove("hidden");
+        progressRoot.querySelector(`.journal-row[data-id="${pageItems[0].id}"]`)?.classList.add("expanded");
+      }
       progressRoot.querySelectorAll(".cf-pagination a.cf-page").forEach(link => {
         link.addEventListener("click", (e) => {
           e.preventDefault();
